@@ -1,0 +1,177 @@
+@import "tailwindcss";
+
+/*
+  Petty Joyas — Design System
+  Paleta editorial de joyería de alta gama derivada de la plantilla Shofy (index-4):
+  burdeos (#821F40), dorado (#BD844C), khaki (#AB9774), tinta (#010F1C).
+*/
+
+@theme {
+  /* Tipografías */
+  --font-sans: var(--font-jost), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cormorant), Georgia, "Times New Roman", serif;
+  --font-script: var(--font-charm), cursive;
+
+  /* Marca — Burdeos / Wine */
+  --color-brand-50: #fdf2f5;
+  --color-brand-100: #fce7ec;
+  --color-brand-200: #f8c9d6;
+  --color-brand-300: #f09cb2;
+  --color-brand-400: #e56588;
+  --color-brand-500: #d33f64;
+  --color-brand-600: #b62a4e;
+  --color-brand-700: #821f40;
+  --color-brand-800: #6d1c38;
+  --color-brand-900: #5c1a33;
+  --color-brand: #821f40;
+
+  /* Dorado / Champagne */
+  --color-gold-50: #faf6f0;
+  --color-gold-100: #f4eada;
+  --color-gold-200: #e8d3b3;
+  --color-gold-300: #d9b783;
+  --color-gold-400: #cc9d5c;
+  --color-gold-500: #bd844c;
+  --color-gold-600: #a76d3e;
+  --color-gold-700: #8a5636;
+  --color-gold-800: #714530;
+  --color-gold-900: #5e3a2b;
+  --color-gold: #bd844c;
+
+  /* Khaki / fondo editorial */
+  --color-khaki-100: #f3efe8;
+  --color-khaki-200: #e7ddcd;
+  --color-khaki-300: #cfbfa3;
+  --color-khaki-400: #ab9774;
+  --color-khaki: #ab9774;
+
+  /* Neutros */
+  --color-ink: #010f1c;
+  --color-ink-soft: #021d35;
+  --color-body: #55585b;
+  --color-muted: #90969b;
+  --color-line: #eaebed;
+  --color-cream: #f8f6f2;
+  --color-stone-bg: #f6f7f9;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #ffffff;
+    color: var(--color-body);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .container-px {
+    @apply mx-auto w-full max-w-[1290px] px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn,
+  .btn-primary,
+  .btn-brand,
+  .btn-gold,
+  .btn-outline,
+  .btn-outline-white {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-7 py-3 text-sm font-medium uppercase tracking-wide transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-ink text-white hover:bg-brand;
+  }
+  .btn-brand {
+    @apply bg-brand text-white hover:bg-brand-800;
+  }
+  .btn-gold {
+    @apply bg-gold text-white hover:bg-gold-600;
+  }
+  .btn-outline {
+    @apply border border-ink text-ink hover:bg-ink hover:text-white;
+  }
+  .btn-outline-white {
+    @apply border border-white/80 text-white hover:bg-white hover:text-ink;
+  }
+
+  .section-subtitle {
+    @apply text-sm font-medium uppercase tracking-[0.18em] text-gold;
+  }
+  .section-title {
+    @apply font-display text-3xl font-medium text-ink sm:text-4xl;
+  }
+
+  .card-hover-img {
+    @apply transition-transform duration-700 ease-out group-hover:scale-105;
+  }
+}
+
+/* Ocultar scrollbar en carruseles horizontales */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Swiper: paginación y flechas con identidad de marca */
+.swiper-pagination-bullet {
+  background-color: var(--color-khaki-300);
+  opacity: 1;
+}
+.swiper-pagination-bullet-active {
+  background-color: var(--color-brand);
+}
+
+/* Hero (slider-4 de la plantilla): dots blancos centrados abajo */
+.hero-slider .swiper-pagination {
+  left: 0;
+  right: 0;
+  bottom: 26px;
+  top: auto;
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+}
+.hero-slider .swiper-pagination-bullet {
+  background-color: rgba(255, 255, 255, 0.35);
+  margin: 0 !important;
+}
+.hero-slider .swiper-pagination-bullet-active {
+  background-color: #ffffff;
+}
+
+/* Rotación continua (botón "Mirá nuestra historia" del hero) */
+@keyframes hero-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Marquee continuo del carrusel de marcas */
+@keyframes brand-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}

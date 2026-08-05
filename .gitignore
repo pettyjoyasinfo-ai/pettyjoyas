@@ -1,0 +1,21 @@
+# Monorepo — ignores comunes (cada paquete tiene además su propio .gitignore)
+
+# Dependencias
+**/node_modules/
+backend/vendor/
+
+# Entorno
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Builds / caché
+frontend/.next/
+frontend/out/
+backend/storage/*.key
+backend/bootstrap/cache/*.php
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
