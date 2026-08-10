@@ -122,10 +122,6 @@ export function CartDrawer() {
   const reservedItems = items.filter(
     (it) => !!it.reservedUntil && new Date(it.reservedUntil).getTime() > Date.now(),
   );
-  const progress = Math.min(
-    100,
-    Math.round((totals.subtotal / SITE.shipping.freeThreshold) * 100),
-  );
 
   return (
     <>
@@ -179,28 +175,6 @@ export function CartDrawer() {
               <ReservationTimer items={reservedItems} onExpired={handleReservationExpired} />
             )}
 
-            {/* Envío gratis */}
-            <div className="border-b border-line px-5 py-4">
-              {totals.freeShipping ? (
-                <p className="text-sm font-medium text-green-700">
-                  🎉 ¡Tenés envío gratis!
-                </p>
-              ) : (
-                <p className="text-sm text-body">
-                  Te faltan{" "}
-                  <span className="font-semibold text-ink">
-                    {formatPrice(totals.remainingForFreeShipping)}
-                  </span>{" "}
-                  para el envío gratis
-                </p>
-              )}
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-stone-bg">
-                <div
-                  className="h-full rounded-full bg-gold transition-all"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4">
               <ul className="flex flex-col gap-5">

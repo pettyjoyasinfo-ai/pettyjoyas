@@ -16,9 +16,9 @@ export default function EnviosPage() {
 
         <h2 className="mt-8 font-display text-2xl text-ink">Envíos</h2>
         <p className="mt-3 text-body">
-          Realizamos envíos a todo el país a través de Correo Argentino y Andreani. El
-          costo se calcula en el checkout según tu código postal. Las compras superiores a
-          $80.000 tienen <strong>envío gratis</strong>.
+          Realizamos envíos a todo el país a través de Correo Argentino y Andreani. El costo
+          no se cobra en el checkout: te contactamos por WhatsApp o email después de la
+          compra para coordinar el envío y su costo según tu ubicación.
         </p>
         <ul className="mt-3 list-disc space-y-1.5 pl-5 text-body">
           <li>CABA y GBA: 2 a 4 días hábiles.</li>

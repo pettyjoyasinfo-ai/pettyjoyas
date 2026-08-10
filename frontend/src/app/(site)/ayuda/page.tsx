@@ -24,8 +24,8 @@ const FAQS: FaqGroup[] = [
         a: "Para CABA y GBA el plazo es de 2 a 4 días hábiles. Para el interior del país, de 4 a 7 días hábiles. Una vez despachado el pedido, te enviamos el número de seguimiento por correo electrónico.",
       },
       {
-        q: "¿Cómo obtengo envío gratis?",
-        a: "Todas las compras iguales o superiores a $80.000 tienen envío gratis a todo el país. El descuento se aplica automáticamente en el checkout al superar ese monto.",
+        q: "¿Cuánto cuesta el envío?",
+        a: "El costo del envío no se cobra en el checkout: te contactamos por WhatsApp o email después de la compra para coordinarlo según tu ubicación.",
       },
       {
         q: "¿Cómo hago el seguimiento de mi pedido?",
