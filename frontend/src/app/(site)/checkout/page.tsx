@@ -295,14 +295,20 @@ export default function CheckoutPage() {
             </div>
 
             {shipping === "envio" && (
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field name="street" label="Calle" required className="sm:col-span-2" />
-                <Field name="number" label="Número" required />
-                <Field name="apartment" label="Piso / Depto" />
-                <Field name="city" label="Localidad" required />
-                <Field name="province" label="Provincia" required />
-                <Field name="zip" label="Código postal" required />
-              </div>
+              <>
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field name="street" label="Calle" required className="sm:col-span-2" />
+                  <Field name="number" label="Número" required />
+                  <Field name="apartment" label="Piso / Depto" />
+                  <Field name="city" label="Localidad" required />
+                  <Field name="province" label="Provincia" required />
+                  <Field name="zip" label="Código postal" required />
+                </div>
+                <p className="mt-3 rounded-xl bg-stone-bg px-4 py-3 text-sm text-body">
+                  El costo del envío no se cobra acá: te contactamos por WhatsApp después de
+                  confirmar el pedido para coordinarlo según tu ubicación.
+                </p>
+              </>
             )}
             {shipping === "retiro" && payment === "efectivo" && (
               <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
