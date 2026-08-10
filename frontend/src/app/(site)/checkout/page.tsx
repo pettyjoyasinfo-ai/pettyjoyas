@@ -319,7 +319,7 @@ export default function CheckoutPage() {
                 onClick={() => setPayment("mercadopago")}
                 icon={<CreditCard className="h-5 w-5" />}
                 title="MercadoPago"
-                desc="Tarjeta, débito y cuotas"
+                desc="Tarjeta y débito"
               />
               <OptionCard
                 active={payment === "transferencia"}
