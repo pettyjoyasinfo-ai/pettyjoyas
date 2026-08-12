@@ -318,9 +318,17 @@ export default function AdminOrderDetail() {
             <ul className="divide-y divide-line">
               {order.items.map((it: any, i: number) => (
                 <li key={i} className="flex items-center justify-between gap-4 p-4">
-                  <div>
-                    <p className="font-medium text-ink">{it.name}</p>
-                    <p className="text-xs text-muted">{it.variantLabel ?? ""} · x{it.quantity}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-stone-bg">
+                      {it.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={it.image} alt="" className="h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                    <div>
+                      <p className="font-medium text-ink">{it.name}</p>
+                      <p className="text-xs text-muted">{it.variantLabel ?? ""} · x{it.quantity}</p>
+                    </div>
                   </div>
                   <span className="font-semibold text-ink">{formatPrice(it.unitPrice * it.quantity)}</span>
                 </li>

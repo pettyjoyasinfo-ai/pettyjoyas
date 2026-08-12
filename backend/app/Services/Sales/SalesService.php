@@ -26,7 +26,7 @@ class SalesService
         $subtotal = 0;
 
         foreach ($items as $it) {
-            $product = Product::with('variants')->findOrFail($it['product_id']);
+            $product = Product::with(['variants', 'images'])->findOrFail($it['product_id']);
             $variant = isset($it['product_variant_id'])
                 ? $product->variants->firstWhere('id', $it['product_variant_id'])
                 : null;
@@ -35,11 +35,18 @@ class SalesService
             $qty = (int) $it['quantity'];
             $subtotal += $unit * $qty;
 
+            // Se guarda "de recuerdo" en el pedido (igual que name/unit_price) —
+            // así el pedido sigue mostrando la foto correcta aunque el producto
+            // después cambie de imagen o se borre.
+            $image = $variant?->image_url
+                ?? $product->images->sortBy('position')->first()?->url;
+
             $lines[] = [
                 'product' => $product,
                 'variant' => $variant,
                 'name' => $product->name,
                 'variant_label' => $variant?->label,
+                'image' => $image,
                 'unit_price' => $unit,
                 'quantity' => $qty,
             ];

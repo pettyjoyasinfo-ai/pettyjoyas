@@ -104,6 +104,7 @@ class CreateSaleAction
                     'product_variant_id' => $line['variant']->id ?? null,
                     'name' => $line['name'],
                     'variant_label' => $line['variant_label'],
+                    'image' => $line['image'] ?? null,
                     'unit_price' => $line['unit_price'],
                     'quantity' => $line['quantity'],
                 ]);

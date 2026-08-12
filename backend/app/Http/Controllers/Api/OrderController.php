@@ -52,7 +52,9 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        return new OrderResource($order->load(['customer', 'items', 'payments']));
+        // items.product.images: fallback para pedidos viejos, de antes de que
+        // se empezara a guardar la imagen en el propio ítem (ver OrderResource).
+        return new OrderResource($order->load(['customer', 'items.product.images', 'payments']));
     }
 
     /**

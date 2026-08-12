@@ -33,6 +33,14 @@ class OrderResource extends JsonResource
                 'productId' => $it->product_id,
                 'name' => $it->name,
                 'variantLabel' => $it->variant_label,
+                // Pedidos nuevos ya tienen la imagen guardada en el ítem; los
+                // viejos (de antes de este campo) caen a la foto actual del
+                // producto, si todavía existe.
+                'image' => $it->image ?? (
+                    $it->relationLoaded('product')
+                        ? $it->product?->images?->sortBy('position')->first()?->url
+                        : null
+                ),
                 'unitPrice' => (int) $it->unit_price,
                 'quantity' => (int) $it->quantity,
             ])),
