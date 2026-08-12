@@ -164,6 +164,7 @@ export default function CheckoutPage() {
         name: `${form.get("firstName")} ${form.get("lastName")}`.trim(),
         email: form.get("email") as string,
         phone: form.get("phone") as string,
+        document: (form.get("document") as string) || undefined,
       },
       items: items.map((it) => ({
         product_id: parseInt(it.productId),
@@ -297,6 +298,7 @@ export default function CheckoutPage() {
             {shipping === "envio" && (
               <>
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field name="document" label="DNI" required className="sm:col-span-2" />
                   <Field name="street" label="Calle" required className="sm:col-span-2" />
                   <Field name="number" label="Número" required />
                   <Field name="apartment" label="Piso / Depto" />

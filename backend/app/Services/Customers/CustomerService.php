@@ -19,20 +19,31 @@ class CustomerService
 
         $email = $data['email'] ?? null;
         if ($email) {
-            return Customer::firstOrCreate(
+            $customer = Customer::firstOrCreate(
                 ['email' => $email],
                 [
                     'name' => $data['name'] ?? 'Cliente',
                     'phone' => $data['phone'] ?? null,
+                    'document' => $data['document'] ?? null,
                     'segment' => CustomerSegment::Nuevo,
                 ],
             );
+
+            // Si ya existía (cliente recurrente) y todavía no tenía DNI cargado,
+            // se lo completa con el que acaba de dar — sin pisar uno que ya
+            // esté guardado, por si hay una diferencia real que revisar a mano.
+            if (! empty($data['document']) && empty($customer->document)) {
+                $customer->update(['document' => $data['document']]);
+            }
+
+            return $customer;
         }
 
         if (! empty($data['name'])) {
             return Customer::create([
                 'name' => $data['name'],
                 'phone' => $data['phone'] ?? null,
+                'document' => $data['document'] ?? null,
                 'segment' => CustomerSegment::Nuevo,
             ]);
         }

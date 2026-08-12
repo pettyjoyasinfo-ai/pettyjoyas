@@ -26,6 +26,7 @@ class StoreSaleRequest extends FormRequest
             // identificar al comprador invitado y vincularlo si luego se registra.
             'customer.email' => [Rule::requiredIf(fn () => ! $this->user('sanctum')), 'nullable', 'email'],
             'customer.phone' => ['nullable', 'string', 'max:30'],
+            'customer.document' => ['nullable', 'string', 'max:30'],
             'coupon_code' => ['nullable', 'string'],
             'payment_method' => ['required', Rule::in(['mercadopago', 'transferencia', 'efectivo', 'tarjeta', 'tarjeta_credito'])],
             'shipping_method' => ['nullable', Rule::in(['envio', 'retiro'])],
