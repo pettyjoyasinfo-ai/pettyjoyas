@@ -4,7 +4,11 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import type { Category } from "@/lib/types";
 
 export function CategoryGrid({ categories }: { categories: Category[] }) {
-  const roots = categories.filter((c) => !c.parentSlug);
+  // Solo categorías raíz CON imagen — una sin foto sale como cuadro vacío,
+  // se ve roto. Mientras no le carguen una foto desde /admin/categorias,
+  // esa categoría no aparece acá (pero sigue existiendo y comprable desde
+  // /tienda igual).
+  const roots = categories.filter((c) => !c.parentSlug && c.image);
   return (
     <section className="bg-[#EFF1F5] py-20">
       <div className="container-px">
