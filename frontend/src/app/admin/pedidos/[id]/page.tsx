@@ -12,7 +12,7 @@ import {
   useUpdateOrderNotes,
   useNotifyCustomer,
 } from "@/lib/api/admin";
-import { ORDER_STATUS_STYLE, ORDER_STATUSES, PAYMENT_METHOD_LABEL } from "@/lib/status-styles";
+import { ORDER_STATUS_STYLE, ORDER_STATUSES, PAYMENT_METHOD_LABEL, SEGMENT_STYLE } from "@/lib/status-styles";
 import { formatPrice } from "@/lib/utils";
 
 // ── Status tracker ──────────────────────────────────────────────────────────
@@ -390,13 +390,43 @@ export default function AdminOrderDetail() {
           <Card title="Cliente">
             {order.customer ? (
               <>
-                <p className="font-medium text-ink">{order.customer.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-ink">{order.customer.name}</p>
+                  {order.customer.vip && <Badge className={SEGMENT_STYLE.vip}>VIP</Badge>}
+                  {order.customer.segment && !order.customer.vip && (
+                    <Badge className={SEGMENT_STYLE[order.customer.segment] ?? undefined}>
+                      {order.customer.segment}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted">{order.customer.email}</p>
+
+                <div className="mt-3 flex flex-col gap-2">
+                  <KV label="Teléfono">{order.customer.phone || "—"}</KV>
+                  <KV label="Documento">{order.customer.document || "—"}</KV>
+                  <KV label="Cumpleaños">{order.customer.birthday || "—"}</KV>
+                  <KV label="Cliente desde">{order.customer.createdAt || "—"}</KV>
+                </div>
+
+                {order.customer.tags?.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {order.customer.tags.map((t: string) => (
+                      <Badge key={t}>{t}</Badge>
+                    ))}
+                  </div>
+                )}
+
+                {order.customer.notes && (
+                  <p className="mt-3 rounded-lg bg-stone-bg px-3 py-2 text-xs text-body">
+                    {order.customer.notes}
+                  </p>
+                )}
+
                 <Link
                   href={`/admin/clientes/${order.customer.id}`}
                   className="mt-3 inline-block text-xs font-medium text-brand hover:underline"
                 >
-                  Ver ficha →
+                  Ver ficha completa →
                 </Link>
               </>
             ) : (
