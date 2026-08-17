@@ -454,6 +454,7 @@ export default function CheckoutPage() {
             <span className="font-semibold text-ink">Total</span>
             <span className="text-2xl font-semibold text-ink">{formatPrice(totals.total)}</span>
           </div>
+          <p className="mt-1 text-right text-xs text-muted">Precio final, incluye IVA (21%)</p>
 
           {hasBlockingIssues && (
             <p className="mt-4 flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">
