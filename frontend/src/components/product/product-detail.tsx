@@ -176,6 +176,7 @@ export function ProductDetail({ product }: { product: Product }) {
         <h1 className="mt-2 font-display text-4xl text-ink">{product.name}</h1>
         <div className="mt-5">
           <Price price={unitPrice} compareAtPrice={product.compareAtPrice} size="lg" />
+          <p className="mt-1 text-xs text-muted">Precio final, incluye IVA (21%)</p>
         </div>
 
         <p className="mt-5 text-sm leading-relaxed text-body">
@@ -325,24 +326,9 @@ export function ProductDetail({ product }: { product: Product }) {
           </span>
         </div>
 
-        {/* Especificaciones */}
         <div className="mt-8 border-t border-line pt-6">
           <h2 className="font-display text-2xl text-ink">Descripción</h2>
           <p className="mt-3 text-sm leading-relaxed text-body">{product.description}</p>
-
-          <h3 className="mt-6 mb-3 text-sm font-semibold uppercase tracking-wide text-ink">
-            Especificaciones
-          </h3>
-          <dl className="divide-y divide-line text-sm">
-            {Object.entries(product.specs).map(([k, v]) =>
-              v ? (
-                <div key={k} className="flex justify-between gap-4 py-2.5">
-                  <dt className="capitalize text-muted">{k}</dt>
-                  <dd className="text-right font-medium text-ink">{v}</dd>
-                </div>
-              ) : null,
-            )}
-          </dl>
         </div>
       </div>
     </div>
