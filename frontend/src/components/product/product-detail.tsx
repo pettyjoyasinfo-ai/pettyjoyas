@@ -196,35 +196,60 @@ export function ProductDetail({ product }: { product: Product }) {
                 ⚠️ Elegí una opción antes de agregar al carrito.
               </p>
             )}
-            {[...variantGroups.entries()].map(([type, variants]) => (
-              <div key={type} className="mt-6 first:mt-0">
-                <p className="mb-2 text-sm font-medium text-ink">
-                  {typeLabels[type] ?? "Opción"}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {variants.map((v) => {
-                    const isActive = selected?.id === v.id;
-                    const out = variantStock(v) <= 0;
-                    return (
-                      <button
-                        key={v.id}
-                        disabled={out}
-                        onClick={() => selectVariant(v)}
-                        className={cn(
-                          "rounded-full border px-4 py-2 text-sm transition",
-                          isActive
-                            ? "border-brand bg-brand text-white"
-                            : "border-line text-ink hover:border-brand",
-                          out && "cursor-not-allowed opacity-40 line-through",
-                        )}
-                      >
-                        {v.label}
-                      </button>
-                    );
-                  })}
+            {[...variantGroups.entries()].map(([type, variants]) => {
+              // Subagrupado opcional (ej. "Femenino"/"Masculino" en talles de
+              // alianzas): solo se activa si alguna variante trae `group`
+              // cargado. Si nadie lo usó, se ve exactamente como siempre.
+              const hasSubgroups = variants.some((v) => v.group);
+              const subgroups = hasSubgroups
+                ? variants.reduce((map, v) => {
+                    const key = v.group?.trim() || "Otros";
+                    const arr = map.get(key) ?? [];
+                    arr.push(v);
+                    map.set(key, arr);
+                    return map;
+                  }, new Map<string, ProductVariant[]>())
+                : new Map([["", variants]]);
+
+              return (
+                <div key={type} className="mt-6 first:mt-0">
+                  <p className="mb-2 text-sm font-medium text-ink">
+                    {typeLabels[type] ?? "Opción"}
+                  </p>
+                  {[...subgroups.entries()].map(([group, vs]) => (
+                    <div key={group || "_"} className="mt-3 first:mt-0">
+                      {group && (
+                        <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted">
+                          {group}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {vs.map((v) => {
+                          const isActive = selected?.id === v.id;
+                          const out = variantStock(v) <= 0;
+                          return (
+                            <button
+                              key={v.id}
+                              disabled={out}
+                              onClick={() => selectVariant(v)}
+                              className={cn(
+                                "rounded-full border px-4 py-2 text-sm transition",
+                                isActive
+                                  ? "border-brand bg-brand text-white"
+                                  : "border-line text-ink hover:border-brand",
+                                out && "cursor-not-allowed opacity-40 line-through",
+                              )}
+                            >
+                              {v.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

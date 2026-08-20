@@ -40,6 +40,7 @@ class CreateProductAction
                 $variant = $product->variants()->create([
                     'label' => $v['label'],
                     'type' => $v['type'] ?? 'variante',
+                    'group' => $v['group'] ?? null,
                     'value' => $v['value'] ?? $v['label'],
                     'sku' => $v['sku'] ?? Str::upper(Str::slug($product->name)).'-'.($i + 1),
                     'price_delta' => $v['price_delta'] ?? 0,

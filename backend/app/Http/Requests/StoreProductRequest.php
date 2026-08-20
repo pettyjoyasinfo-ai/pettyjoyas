@@ -47,6 +47,7 @@ class StoreProductRequest extends FormRequest
             'variants' => ['nullable', 'array'],
             'variants.*.label' => ['required_with:variants', 'string'],
             'variants.*.type' => ['nullable', 'string'],
+            'variants.*.group' => ['nullable', 'string', 'max:100'],
             'variants.*.sku' => ['nullable', 'string'],
             'variants.*.price_delta' => ['nullable', 'integer'],
             'variants.*.weight' => ['nullable', 'numeric', 'min:0'],

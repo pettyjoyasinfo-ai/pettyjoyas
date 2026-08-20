@@ -21,6 +21,8 @@ export type ProductVariant = {
   /** Etiqueta visible, ej: "Oro 18k · Talle 16". */
   label: string;
   type: VariantOptionType;
+  /** Subgrupo opcional dentro del type (ej. "Femenino"/"Masculino" en talles de alianzas). */
+  group?: string | null;
   value: string;
   sku: string;
   stock: number;

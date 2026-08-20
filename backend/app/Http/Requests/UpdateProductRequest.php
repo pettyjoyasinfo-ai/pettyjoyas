@@ -45,6 +45,7 @@ class UpdateProductRequest extends FormRequest
             'variants.*.id' => ['nullable', 'integer', 'exists:product_variants,id'],
             'variants.*.label' => ['required_with:variants', 'string'],
             'variants.*.type' => ['nullable', 'string'],
+            'variants.*.group' => ['nullable', 'string', 'max:100'],
             'variants.*.price_delta' => ['nullable', 'integer'],
             'variants.*.weight' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],

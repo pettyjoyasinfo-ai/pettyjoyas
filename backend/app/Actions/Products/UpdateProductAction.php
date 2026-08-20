@@ -44,6 +44,7 @@ class UpdateProductAction
                         $product->variants()->where('id', $v['id'])->update([
                             'label' => $v['label'],
                             'type' => $v['type'] ?? 'variante',
+                            'group' => $v['group'] ?? null,
                             'value' => $v['value'] ?? $v['label'],
                             'price_delta' => $v['price_delta'] ?? 0,
                             'weight' => $v['weight'] ?? null,
@@ -57,6 +58,7 @@ class UpdateProductAction
                         $variant = $product->variants()->create([
                             'label' => $v['label'],
                             'type' => $v['type'] ?? 'variante',
+                            'group' => $v['group'] ?? null,
                             'value' => $v['value'] ?? $v['label'],
                             'sku' => $v['sku'] ?? 'TMP-'.Str::random(10),
                             'price_delta' => $v['price_delta'] ?? 0,

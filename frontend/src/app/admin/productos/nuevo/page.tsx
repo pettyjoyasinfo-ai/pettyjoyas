@@ -21,6 +21,7 @@ const TYPE_LABELS: Record<string, string> = {
 type VariantRow = {
   label: string;
   type: string;
+  group: string;
   price_delta: string;
   weight: string;
   stock: string;
@@ -54,14 +55,25 @@ export default function NuevoProducto() {
   function set(k: string, v: string) { setForm((f: any) => ({ ...f, [k]: v })); }
 
   function addVariant() {
-    setVariants((v) => [...v, { label: "", type: "material", price_delta: "", weight: "", stock: "", image: "" }]);
+    setVariants((v) => [...v, { label: "", type: "material", group: "", price_delta: "", weight: "", stock: "", image: "" }]);
   }
   function quickAddVariant(type: string, value: string) {
     setVariants((v) => {
       // Evita duplicar exactamente la misma variante.
       if (v.some((x) => x.type === type && x.label.trim().toLowerCase() === value.toLowerCase())) return v;
-      return [...v, { label: value, type, price_delta: "", weight: "", stock: "", image: "" }];
+      return [...v, { label: value, type, group: "", price_delta: "", weight: "", stock: "", image: "" }];
     });
+  }
+  /** Genera varias variantes de una: "cargar rango de talles" (ej. 10 a 24 → 15 filas). */
+  function addRange(type: string, prefix: string, from: number, to: number, group: string) {
+    const rows: VariantRow[] = [];
+    const start = Math.min(from, to);
+    const end = Math.max(from, to);
+    for (let n = start; n <= end; n++) {
+      const label = prefix ? `${prefix} ${n}` : String(n);
+      rows.push({ label, type, group, price_delta: "", weight: "", stock: "", image: "" });
+    }
+    setVariants((v) => [...v, ...rows]);
   }
   function setVariant(i: number, k: keyof VariantRow, val: string) {
     setVariants((vs) => vs.map((v, idx) => (idx === i ? { ...v, [k]: val } : v)));
@@ -123,6 +135,7 @@ export default function NuevoProducto() {
           .map((v) => ({
             label: v.label,
             type: v.type || "variante",
+            group: v.group.trim() || null,
             value: v.label,
             price_delta: v.price_delta ? toNumber(v.price_delta) : 0,
             weight: v.weight ? toNumber(v.weight) : null,
@@ -256,6 +269,9 @@ export default function NuevoProducto() {
               </button>
             }
           >
+            {/* Carga rápida de un rango de talles (ej. alianzas: 10 a 24) */}
+            <RangeGenerator onGenerate={addRange} />
+
             {/* Sugerencias: variantes más usadas en el catálogo (clic para agregar) */}
             {suggestions && Object.keys(suggestions).length > 0 && (
               <div className="mb-4 flex flex-col gap-2 rounded-xl bg-stone-bg p-3">
@@ -294,7 +310,7 @@ export default function NuevoProducto() {
                       onClear={() => setVariant(i, "image", "")}
                     />
 
-                    <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto_auto_auto_auto] sm:items-end">
+                    <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto_auto_auto_auto] sm:items-end">
                       <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Etiqueta</span>
                         <input value={v.label} onChange={(e) => setVariant(i, "label", e.target.value)} placeholder="Talle 16 / Oro" className={inp} /></label>
                       <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Tipo</span>
@@ -305,6 +321,8 @@ export default function NuevoProducto() {
                           <option value="color">Color</option>
                           <option value="piedra">Piedra</option>
                         </select></label>
+                      <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Grupo <span className="font-normal">· opcional</span></span>
+                        <input value={v.group} onChange={(e) => setVariant(i, "group", e.target.value)} placeholder="Femenino / Masculino" className={inp} /></label>
                       <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">+/- precio</span>
                         <input value={v.price_delta} onChange={(e) => setVariant(i, "price_delta", e.target.value)} placeholder="0" className={`${inp} w-24`} /></label>
                       <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Peso (g) <span className="font-normal">· opcional</span></span>
@@ -404,6 +422,80 @@ function VariantImage({
           e.target.value = "";
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * Carga varias variantes de una sola vez a partir de un rango numérico
+ * (ej. talle 10 al 24). Pensado para alianzas u otros productos con muchos
+ * talles: evita cargarlos uno por uno. El "Grupo" es opcional — solo hace
+ * falta si el mismo producto tiene, por ejemplo, talles de mujer y de hombre
+ * y se quieren separar visualmente en la ficha.
+ */
+function RangeGenerator({
+  onGenerate,
+}: {
+  onGenerate: (type: string, prefix: string, from: number, to: number, group: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState("talle");
+  const [prefix, setPrefix] = useState("Talle");
+  const [from, setFrom] = useState("10");
+  const [to, setTo] = useState("24");
+  const [group, setGroup] = useState("");
+
+  function submit() {
+    const f = toNumber(from);
+    const t = toNumber(to);
+    if (!f || !t) return;
+    onGenerate(type, prefix.trim(), f, t, group.trim());
+    setOpen(false);
+    setGroup("");
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mb-4 flex items-center gap-1.5 rounded-xl border border-dashed border-line px-3 py-2 text-xs font-medium text-brand transition hover:border-brand"
+      >
+        <Plus className="h-3.5 w-3.5" /> Cargar rango de talles
+      </button>
+    );
+  }
+
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-xl border border-line bg-stone-bg p-3">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
+        Cargar rango de talles
+      </p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 sm:items-end">
+        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Tipo</span>
+          <select value={type} onChange={(e) => setType(e.target.value)} className={inp}>
+            <option value="material">Material</option>
+            <option value="talle">Talle</option>
+            <option value="largo">Largo</option>
+            <option value="color">Color</option>
+            <option value="piedra">Piedra</option>
+          </select></label>
+        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Prefijo <span className="font-normal">· opcional</span></span>
+          <input value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="Talle" className={inp} /></label>
+        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Desde</span>
+          <input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="10" className={inp} /></label>
+        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Hasta</span>
+          <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="24" className={inp} /></label>
+        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Grupo <span className="font-normal">· opcional</span></span>
+          <input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="Femenino / Masculino" className={inp} /></label>
+      </div>
+      <p className="text-[11px] text-muted">
+        Se van a crear {Math.max(0, Math.abs(toNumber(to) - toNumber(from)) + 1) || 0} variantes (una por cada número entre "Desde" y "Hasta"). Después podés ajustar precio, peso o stock de cada una.
+      </p>
+      <div className="flex gap-2">
+        <button type="button" onClick={submit} className="btn-brand px-4 py-2 text-xs">Generar</button>
+        <button type="button" onClick={() => setOpen(false)} className="btn-outline px-4 py-2 text-xs">Cancelar</button>
+      </div>
     </div>
   );
 }
