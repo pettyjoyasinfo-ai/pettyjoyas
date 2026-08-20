@@ -21,6 +21,7 @@ const TYPE_LABELS: Record<string, string> = {
   largo: "Largo",
   color: "Color",
   piedra: "Piedra",
+  peso: "Peso",
   variante: "Variante",
 };
 
@@ -368,6 +369,7 @@ export default function EditarProducto() {
                           <option value="largo">Largo</option>
                           <option value="color">Color</option>
                           <option value="piedra">Piedra</option>
+                          <option value="peso">Peso</option>
                         </select>
                       </label>
                       <label className="flex flex-col gap-1">

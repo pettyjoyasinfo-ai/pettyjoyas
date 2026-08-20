@@ -14,7 +14,7 @@ export type Category = {
 
 export type ProductBadge = "nuevo" | "oferta" | "destacado" | "agotado";
 
-export type VariantOptionType = "material" | "talle" | "largo" | "color" | "piedra";
+export type VariantOptionType = "material" | "talle" | "largo" | "color" | "piedra" | "peso";
 
 export type ProductVariant = {
   id: string;

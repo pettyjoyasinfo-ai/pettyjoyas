@@ -106,6 +106,7 @@ export function ProductDetail({ product }: { product: Product }) {
     largo: "Largo",
     color: "Color / Variante",
     piedra: "Piedra",
+    peso: "Peso",
   };
 
   function handleAddClick() {

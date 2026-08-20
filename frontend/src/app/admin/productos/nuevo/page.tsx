@@ -15,6 +15,7 @@ const TYPE_LABELS: Record<string, string> = {
   largo: "Largo",
   color: "Color",
   piedra: "Piedra",
+  peso: "Peso",
   variante: "Variante",
 };
 
@@ -320,6 +321,7 @@ export default function NuevoProducto() {
                           <option value="largo">Largo</option>
                           <option value="color">Color</option>
                           <option value="piedra">Piedra</option>
+                          <option value="peso">Peso</option>
                         </select></label>
                       <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Grupo <span className="font-normal">· opcional</span></span>
                         <input value={v.group} onChange={(e) => setVariant(i, "group", e.target.value)} placeholder="Femenino / Masculino" className={inp} /></label>
