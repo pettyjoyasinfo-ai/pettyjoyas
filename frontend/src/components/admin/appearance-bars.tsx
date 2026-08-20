@@ -95,7 +95,7 @@ export function AppearanceBars() {
               <input
                 value={item.text}
                 onChange={(e) => setAnnItem(i, { text: e.target.value })}
-                placeholder="Envío gratis desde $80.000"
+                placeholder="Envíos a todo el país · coordinás el costo por WhatsApp"
                 className={`${inp} min-w-0 flex-1`}
               />
               <button onClick={() => removeAnnItem(i)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-line text-muted transition hover:border-red-300 hover:text-red-600" aria-label="Eliminar">

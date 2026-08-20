@@ -115,7 +115,7 @@ function buildComprobanteHTML(order: any): string {
     <table>
       <tr><td style="padding:5px 4px;color:#555">Subtotal</td><td style="text-align:right;padding:5px 4px">${fmtARS(order.subtotal)}</td></tr>
       ${order.discount > 0 ? `<tr class="discount"><td style="padding:5px 4px">Descuento${order.couponCode ? ` (${order.couponCode})` : ""}</td><td style="text-align:right;padding:5px 4px">−${fmtARS(order.discount)}</td></tr>` : ""}
-      <tr><td style="padding:5px 4px;color:#555">Envío</td><td style="text-align:right;padding:5px 4px">${order.shippingCost ? fmtARS(order.shippingCost) : "Gratis"}</td></tr>
+      <tr><td style="padding:5px 4px;color:#555">Envío</td><td style="text-align:right;padding:5px 4px">${order.shippingCost ? fmtARS(order.shippingCost) : "A coordinar"}</td></tr>
       <tr class="total-row"><td>Total</td><td style="text-align:right">${fmtARS(order.total)}</td></tr>
     </table>
   </div>
@@ -347,7 +347,7 @@ export default function AdminOrderDetail() {
               )}
               <div className="flex justify-between">
                 <dt className="text-body">Envío</dt>
-                <dd className="text-ink">{order.shippingCost ? formatPrice(order.shippingCost) : "Gratis"}</dd>
+                <dd className="text-ink">{order.shippingCost ? formatPrice(order.shippingCost) : "A coordinar"}</dd>
               </div>
               <div className="flex justify-between border-t border-line pt-2 text-base font-semibold">
                 <dt className="text-ink">Total</dt>

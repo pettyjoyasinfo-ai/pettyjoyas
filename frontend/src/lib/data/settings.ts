@@ -75,13 +75,13 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   announcement: {
     enabled: true,
     items: [
-      { icon: "Truck", text: "Envío gratis desde $80.000" },
+      { icon: "Truck", text: "Envíos a todo el país · coordinás el costo por WhatsApp" },
       { icon: "Sparkles", text: "3 cuotas sin interés · Más de 30 años de trayectoria" },
     ],
   },
   features: {
     items: [
-      { icon: "Truck", title: "Envío a todo el país", text: "Gratis desde $80.000" },
+      { icon: "Truck", title: "Envío a todo el país", text: "Costo a coordinar por WhatsApp" },
       { icon: "ShieldCheck", title: "Compra protegida", text: "Pago seguro con MercadoPago" },
       { icon: "RefreshCcw", title: "Cambios sin vueltas", text: "30 días para cambios" },
       { icon: "Gem", title: "Garantía de por vida", text: "En el armado de cada pieza" },

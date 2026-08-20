@@ -41,7 +41,7 @@ export default function PedidoDetallePage() {
           <dl className="space-y-2 border-t border-line bg-stone-bg/50 p-5 text-sm">
             <div className="flex justify-between"><dt className="text-body">Subtotal</dt><dd className="text-ink">{formatPrice(order.subtotal)}</dd></div>
             {order.discount > 0 && <div className="flex justify-between text-brand"><dt>Descuento {order.couponCode ? `(${order.couponCode})` : ""}</dt><dd>-{formatPrice(order.discount)}</dd></div>}
-            <div className="flex justify-between"><dt className="text-body">Envío</dt><dd className="text-ink">{order.shippingCost ? formatPrice(order.shippingCost) : "Gratis"}</dd></div>
+            <div className="flex justify-between"><dt className="text-body">Envío</dt><dd className="text-ink">{order.shippingCost ? formatPrice(order.shippingCost) : "A coordinar"}</dd></div>
             <div className="flex justify-between border-t border-line pt-2 text-base font-semibold"><dt className="text-ink">Total</dt><dd className="text-ink">{formatPrice(order.total)}</dd></div>
           </dl>
         </div>
