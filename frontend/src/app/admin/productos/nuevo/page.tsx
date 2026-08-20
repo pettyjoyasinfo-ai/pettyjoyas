@@ -302,7 +302,7 @@ export default function NuevoProducto() {
             ) : (
               <div className="flex flex-col gap-3">
                 {variants.map((v, i) => (
-                  <div key={i} className="flex flex-col gap-2 rounded-xl border border-line p-3 sm:flex-row sm:items-end">
+                  <div key={i} className="flex flex-col gap-3 rounded-xl border border-line p-3 sm:flex-row">
                     {/* Imagen de la variante */}
                     <VariantImage
                       image={v.image}
@@ -311,29 +311,35 @@ export default function NuevoProducto() {
                       onClear={() => setVariant(i, "image", "")}
                     />
 
-                    <div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto_auto_auto_auto] sm:items-end">
-                      <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Etiqueta</span>
-                        <input value={v.label} onChange={(e) => setVariant(i, "label", e.target.value)} placeholder="Talle 16 / Oro" className={inp} /></label>
-                      <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Tipo</span>
-                        <select value={v.type} onChange={(e) => setVariant(i, "type", e.target.value)} className={inp}>
-                          <option value="material">Material</option>
-                          <option value="talle">Talle</option>
-                          <option value="largo">Largo</option>
-                          <option value="color">Color</option>
-                          <option value="piedra">Piedra</option>
-                          <option value="peso">Peso</option>
-                        </select></label>
-                      <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Grupo <span className="font-normal">· opcional</span></span>
-                        <input value={v.group} onChange={(e) => setVariant(i, "group", e.target.value)} placeholder="Femenino / Masculino" className={inp} /></label>
-                      <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">+/- precio</span>
-                        <input value={v.price_delta} onChange={(e) => setVariant(i, "price_delta", e.target.value)} placeholder="0" className={`${inp} w-24`} /></label>
-                      <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Peso (g) <span className="font-normal">· opcional</span></span>
-                        <input value={v.weight} onChange={(e) => setVariant(i, "weight", e.target.value)} placeholder="0" className={`${inp} w-24`} /></label>
-                      <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Stock</span>
-                        <input value={v.stock} onChange={(e) => setVariant(i, "stock", e.target.value)} placeholder="0" className={`${inp} w-20`} /></label>
-                      <button onClick={() => removeVariant(i)} className="grid h-10 w-10 place-items-center rounded-xl border border-line text-muted transition hover:border-red-300 hover:text-red-600">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div className="flex flex-1 flex-col gap-2">
+                      {/* Fila 1: identificación de la variante */}
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Etiqueta</span>
+                          <input value={v.label} onChange={(e) => setVariant(i, "label", e.target.value)} placeholder="Talle 16 / Oro" className={inp} /></label>
+                        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Tipo</span>
+                          <select value={v.type} onChange={(e) => setVariant(i, "type", e.target.value)} className={inp}>
+                            <option value="material">Material</option>
+                            <option value="talle">Talle</option>
+                            <option value="largo">Largo</option>
+                            <option value="color">Color</option>
+                            <option value="piedra">Piedra</option>
+                            <option value="peso">Peso</option>
+                          </select></label>
+                        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Grupo <span className="font-normal">· opcional</span></span>
+                          <input value={v.group} onChange={(e) => setVariant(i, "group", e.target.value)} placeholder="Femenino / Masculino" className={inp} /></label>
+                      </div>
+                      {/* Fila 2: precio, peso, stock */}
+                      <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+                        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">+/- precio</span>
+                          <input value={v.price_delta} onChange={(e) => setVariant(i, "price_delta", e.target.value)} placeholder="0" className={inp} /></label>
+                        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Peso (g) <span className="font-normal">· opcional</span></span>
+                          <input value={v.weight} onChange={(e) => setVariant(i, "weight", e.target.value)} placeholder="0" className={inp} /></label>
+                        <label className="flex flex-col gap-1"><span className="text-[11px] text-muted">Stock</span>
+                          <input value={v.stock} onChange={(e) => setVariant(i, "stock", e.target.value)} placeholder="0" className={inp} /></label>
+                        <button onClick={() => removeVariant(i)} className="grid h-10 w-10 place-items-center rounded-xl border border-line text-muted transition hover:border-red-300 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
