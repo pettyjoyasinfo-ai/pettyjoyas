@@ -464,10 +464,17 @@ export default function CheckoutPage() {
           {error && (
             <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
           )}
+          <p className="mt-4 rounded-xl bg-stone-bg px-4 py-3 text-xs text-body">
+            Al confirmar el pedido aceptás que, una vez realizada la compra, no se hacen
+            reintegros de dinero — solo cambios. Ver{" "}
+            <Link href="/envios" className="underline underline-offset-2 hover:text-brand">
+              política de cambios y devoluciones
+            </Link>.
+          </p>
           <button
             type="submit"
             disabled={submitting || hasBlockingIssues}
-            className="btn-brand mt-6 w-full disabled:opacity-50"
+            className="btn-brand mt-4 w-full disabled:opacity-50"
           >
             {submitting ? <Spinner className="h-4 w-4 text-white" /> : <Lock className="h-4 w-4" />}
             {submitting ? "Procesando…" : payment === "mercadopago" ? "Pagar con MercadoPago" : "Confirmar pedido"}

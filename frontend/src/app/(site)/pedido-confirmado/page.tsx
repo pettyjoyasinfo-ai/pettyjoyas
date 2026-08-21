@@ -318,6 +318,13 @@ export default function OrderConfirmedPage() {
         </div>
       )}
 
+      <p className="mt-4 max-w-md text-xs text-muted">
+        Recordá: una vez realizada la compra no se hacen reintegros de dinero, solo cambios. Ver{" "}
+        <Link href="/envios" className="underline underline-offset-2 hover:text-brand">
+          política de cambios y devoluciones
+        </Link>.
+      </p>
+
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         {(isTransfer || isCreditCard) && (
           <a

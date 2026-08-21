@@ -178,6 +178,10 @@ export function ProductDetail({ product }: { product: Product }) {
         <div className="mt-5">
           <Price price={unitPrice} compareAtPrice={product.compareAtPrice} size="lg" />
           <p className="mt-1 text-xs text-muted">Precio final, incluye IVA (21%)</p>
+          <p className="mt-1 text-xs text-muted">
+            Una vez realizada la compra no se hacen reintegros de dinero, solo cambios.{" "}
+            <a href="/envios" className="underline underline-offset-2 hover:text-brand">Ver política</a>
+          </p>
         </div>
 
         <p className="mt-5 text-sm leading-relaxed text-body">

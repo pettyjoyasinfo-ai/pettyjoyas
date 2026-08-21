@@ -44,6 +44,12 @@ export default function PedidoDetallePage() {
             <div className="flex justify-between"><dt className="text-body">Envío</dt><dd className="text-ink">{order.shippingCost ? formatPrice(order.shippingCost) : "A coordinar"}</dd></div>
             <div className="flex justify-between border-t border-line pt-2 text-base font-semibold"><dt className="text-ink">Total</dt><dd className="text-ink">{formatPrice(order.total)}</dd></div>
           </dl>
+          <p className="border-t border-line px-5 py-3 text-xs text-muted">
+            Una vez realizada la compra no se hacen reintegros de dinero, solo cambios. Ver{" "}
+            <Link href="/envios" className="underline underline-offset-2 hover:text-brand">
+              política de cambios y devoluciones
+            </Link>.
+          </p>
         </div>
 
         <div className="flex h-fit flex-col gap-4">

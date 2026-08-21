@@ -354,6 +354,13 @@ export default function AdminOrderDetail() {
                 <dd className="text-ink">{formatPrice(order.total)}</dd>
               </div>
             </dl>
+            <p className="border-t border-line px-5 py-3 text-xs text-muted">
+              Recordá al cliente: una vez realizada la compra no se hacen reintegros de
+              dinero, solo cambios. Ver{" "}
+              <Link href="/envios" className="underline underline-offset-2 hover:text-brand">
+                política de cambios y devoluciones
+              </Link>.
+            </p>
           </Card>
 
           {/* ── Nota interna ── */}
