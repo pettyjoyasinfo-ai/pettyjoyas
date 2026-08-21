@@ -70,15 +70,10 @@ export default function PoliticasPage() {
           stock, avisándote y ofreciéndote el reembolso correspondiente.
         </p>
 
-        <h3 className="mt-6 text-base font-semibold text-ink">Derecho de arrepentimiento</h3>
+        <h3 className="mt-6 text-base font-semibold text-ink">Cambios y devoluciones</h3>
         <p className="mt-3 text-body">
-          Conforme al artículo 34 de la Ley 24.240 de Defensa del Consumidor, en las compras
-          a distancia (online) tenés 10 días corridos desde la recepción del producto para
-          arrepentirte de la compra, sin costo ni responsabilidad alguna. Para ejercer este
-          derecho, escribinos a{" "}
-          <a href={`mailto:${SITE.email}`} className="text-brand underline-offset-2 hover:underline">
-            {SITE.email}
-          </a>. Para cambios y devoluciones fuera de este plazo, consultá nuestra sección{" "}
+          Una vez realizada la compra no se hacen reintegros de dinero, solo cambios. Consultá
+          las condiciones en nuestra sección{" "}
           <a href="/envios" className="text-brand underline-offset-2 hover:underline">
             Envíos y devoluciones
           </a>.
