@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart/store";
 import { useAuth } from "@/lib/auth/store";
 import { useFavoriteIds, useToggleFavorite } from "@/lib/api/account";
+import { usePublicSettings } from "@/lib/api/admin";
 import { useProductStock } from "@/lib/api/stock";
 import { trackViewContent } from "@/lib/analytics/meta-pixel";
 import { cn, formatPrice } from "@/lib/utils";
@@ -86,6 +87,14 @@ export function ProductDetail({ product }: { product: Product }) {
   const needsVariant = product.variants.length > 0;
   const unitPrice = product.price + (selected?.priceDelta ?? 0);
   const maxStock = needsVariant ? (selected ? variantStock(selected) : 0) : liveTotal;
+
+  // % de descuento por transferencia, configurable desde /admin/configuracion
+  // (mismo valor que usa el checkout). unitPrice ya viene con el descuento
+  // del producto aplicado (si el admin le asignó uno), así que el precio
+  // con transferencia se calcula sobre ese valor, no sobre el precio de lista.
+  const { data: publicSettings } = usePublicSettings();
+  const transferDiscountPct: number = publicSettings?.payment?.descuento_transferencia ?? 10;
+  const transferPrice = Math.round(unitPrice * (1 - transferDiscountPct / 100));
 
   // Subtract what's already in the cart so the display reflects truly available units.
   const cartKey = selected ? `${product.id}::${selected.id}` : String(product.id);
@@ -178,6 +187,11 @@ export function ProductDetail({ product }: { product: Product }) {
         <div className="mt-5">
           <Price price={unitPrice} compareAtPrice={product.compareAtPrice} size="lg" />
           <p className="mt-1 text-xs text-muted">Precio final, incluye IVA (21%)</p>
+          {transferDiscountPct > 0 && (
+            <p className="mt-1.5 text-sm font-medium text-brand">
+              {formatPrice(transferPrice)} pagando con transferencia ({transferDiscountPct}% off)
+            </p>
+          )}
           <p className="mt-1 text-xs text-muted">
             Una vez realizada la compra no se hacen reintegros de dinero, solo cambios.{" "}
             <a href="/envios" className="underline underline-offset-2 hover:text-brand">Ver política</a>
