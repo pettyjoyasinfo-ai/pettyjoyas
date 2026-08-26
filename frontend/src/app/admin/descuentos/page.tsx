@@ -103,6 +103,10 @@ export default function AdminDescuentos() {
     }
   }
 
+  const missingScopeTarget =
+    (form.scope === "category" && !form.category_id) ||
+    (form.scope === "products" && form.product_ids.length === 0);
+
   async function handleDelete(id: string) {
     try {
       await del.mutateAsync(id);
@@ -326,20 +330,31 @@ export default function AdminDescuentos() {
 
             {form.scope === "category" && (
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-ink">Categoría</span>
+                <span className="text-xs font-medium text-ink">Categoría <span className="text-brand">*</span></span>
                 <select value={form.category_id} onChange={(e) => set("category_id", e.target.value)} className={inp}>
                   <option value="">Elegí una categoría…</option>
                   {categories.map((c: any) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
+                {!form.category_id && (
+                  <span className="text-[11px] text-red-600">
+                    Sin categoría el descuento no se aplica a ningún producto.
+                  </span>
+                )}
+                {form.category_id && !categories.find((c: any) => String(c.id) === String(form.category_id))?.parentSlug && (
+                  <span className="text-[11px] text-muted">
+                    Si esta categoría tiene subcategorías, el descuento también se aplica a los
+                    productos cargados en ellas.
+                  </span>
+                )}
               </label>
             )}
 
             {form.scope === "products" && (
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-ink">
-                  Productos ({form.product_ids.length} seleccionados)
+                  Productos ({form.product_ids.length} seleccionados) <span className="text-brand">*</span>
                 </span>
                 <div className="max-h-44 overflow-y-auto rounded-xl border border-line p-2">
                   {products.map((p: any) => (
@@ -420,7 +435,7 @@ export default function AdminDescuentos() {
             <div className="flex gap-2">
               <button
                 onClick={save}
-                disabled={isPending || !form.name || !form.value}
+                disabled={isPending || !form.name || !form.value || missingScopeTarget}
                 className="btn-brand flex flex-1 items-center justify-center gap-1.5 py-2.5 text-xs"
               >
                 {isPending ? <Spinner /> : <><Plus className="h-4 w-4" /> {editingId ? "Guardar cambios" : "Crear descuento"}</>}

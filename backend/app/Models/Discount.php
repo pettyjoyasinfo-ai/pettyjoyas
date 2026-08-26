@@ -42,11 +42,20 @@ class Discount extends Model
         return true;
     }
 
-    /** ¿Aplica a este producto? */
+    /**
+     * ¿Aplica a este producto?
+     *
+     * Para scope=category matchea tanto la categoría exacta como, si el
+     * descuento apunta a una categoría padre (ej. "Alianzas"), a cualquiera
+     * de sus subcategorías (ej. "Plata 950", "Plata y Oro") — los productos
+     * siempre se cargan en la subcategoría, nunca directo en el padre.
+     * Requiere `category` cargada en $product (evita N+1 en listados).
+     */
     public function appliesTo(Product $product): bool
     {
         return match ($this->scope) {
-            'category' => $product->category_id === $this->category_id,
+            'category' => $product->category_id === $this->category_id
+                || $product->category?->parent_id === $this->category_id,
             'products' => in_array($product->id, $this->product_ids ?? [], true),
             default => true, // all
         };
