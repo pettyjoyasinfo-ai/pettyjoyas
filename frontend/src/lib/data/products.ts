@@ -85,7 +85,10 @@ export async function getCategories(): Promise<Category[]> {
   try {
     return await apiFetch<Category[]>("/categories");
   } catch {
-    return CATEGORIES;
+    // Nunca mostrar el catálogo de PRUEBA (seed.ts) en producción: si la API
+    // real falla, es mejor un listado vacío temporal que categorías falsas
+    // que no existen ni se pueden comprar.
+    return [];
   }
 }
 
@@ -98,7 +101,11 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   try {
     return await apiFetch<Product[]>(`/products${toQuery(filters)}`);
   } catch {
-    return filterMock(filters);
+    // Nunca mostrar el catálogo de PRUEBA (seed.ts) en producción: si la API
+    // real falla (ej. un hiccup de red), es mejor un listado vacío temporal
+    // — que se recupera solo en el próximo refresh/revalidate — que mostrar
+    // productos falsos que un cliente podría intentar comprar.
+    return [];
   }
 }
 
