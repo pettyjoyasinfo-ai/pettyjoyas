@@ -76,6 +76,25 @@ class ProductController extends Controller
             default => $query->orderByDesc('rating'),
         };
 
+        // Paginación opt-in: solo si viene ?page=, para no romper a los
+        // consumidores existentes (home, destacados, ofertas, etc.) que
+        // esperan un array plano con TODO el resultado.
+        if ($request->filled('page')) {
+            $perPage = min(60, max(1, (int) $request->query('per_page', 24)));
+            $paginator = $query->paginate($perPage)->withQueryString();
+            $items = collect($paginator->items())->each(fn (Product $p) => $this->attachStock($p));
+            $this->discounts->decorate($items, $request->query('promo'));
+
+            return ProductResource::collection($items)->additional([
+                'meta' => [
+                    'currentPage' => $paginator->currentPage(),
+                    'lastPage' => $paginator->lastPage(),
+                    'perPage' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                ],
+            ]);
+        }
+
         $products = $query->get()->each(fn (Product $p) => $this->attachStock($p));
         $this->discounts->decorate($products, $request->query('promo'));
 

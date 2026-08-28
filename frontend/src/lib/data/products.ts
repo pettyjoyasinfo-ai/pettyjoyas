@@ -1,5 +1,5 @@
 import { CATEGORIES, COUPONS, PRODUCTS } from "@/lib/data/seed";
-import type { Category, Coupon, Product } from "@/lib/types";
+import type { Category, Coupon, Product, ProductsPage } from "@/lib/types";
 import { apiFetch, isApiConfigured } from "@/lib/api/client";
 
 /**
@@ -106,6 +106,52 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
     // — que se recupera solo en el próximo refresh/revalidate — que mostrar
     // productos falsos que un cliente podría intentar comprar.
     return [];
+  }
+}
+
+const DEFAULT_PER_PAGE = 24;
+
+/**
+ * Versión paginada de /tienda: pide una página del catálogo en vez de todo
+ * de una (evita que la tienda se ponga lenta/se trabe con cientos de
+ * productos). El resto de las secciones (destacados, home, relacionados,
+ * etc.) siguen usando getProducts() sin paginar.
+ */
+export async function getProductsPaginated(
+  filters: ProductFilters = {},
+  page = 1,
+  perPage = DEFAULT_PER_PAGE,
+): Promise<ProductsPage> {
+  if (!isApiConfigured()) {
+    const all = filterMock(filters);
+    const start = (page - 1) * perPage;
+    return {
+      items: all.slice(start, start + perPage),
+      page,
+      perPage,
+      total: all.length,
+      totalPages: Math.max(1, Math.ceil(all.length / perPage)),
+    };
+  }
+
+  try {
+    const qs = toQuery(filters);
+    const sep = qs ? "&" : "?";
+    const res = await apiFetch<{
+      data: Product[];
+      meta: { currentPage: number; lastPage: number; perPage: number; total: number };
+    }>(`/products${qs}${sep}page=${page}&per_page=${perPage}`);
+    return {
+      items: res.data,
+      page: res.meta.currentPage,
+      totalPages: res.meta.lastPage,
+      total: res.meta.total,
+      perPage: res.meta.perPage,
+    };
+  } catch {
+    // Mismo criterio que getProducts(): ante una falla real, listado vacío
+    // (nunca el catálogo de prueba).
+    return { items: [], page: 1, totalPages: 1, total: 0, perPage };
   }
 }
 

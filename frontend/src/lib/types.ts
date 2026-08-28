@@ -70,6 +70,15 @@ export type Product = {
   createdAt: string;
 };
 
+/** Página de resultados paginados de /tienda (evita cargar TODO el catálogo de una). */
+export type ProductsPage = {
+  items: Product[];
+  page: number;
+  totalPages: number;
+  total: number;
+  perPage: number;
+};
+
 export type Review = {
   id: number;
   author: string;

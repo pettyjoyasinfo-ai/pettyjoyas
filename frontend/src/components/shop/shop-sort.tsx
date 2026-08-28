@@ -19,6 +19,7 @@ export function ShopSort() {
     const params = new URLSearchParams(searchParams.toString());
     if (value === "relevancia") params.delete("orden");
     else params.set("orden", value);
+    params.delete("pagina");
     router.push(`${pathname}?${params.toString()}`);
   }
 

@@ -125,6 +125,8 @@ export function ShopFilters({
         if (value == null || value === "") params.delete(key);
         else params.set(key, value);
       }
+      // Cambiar un filtro invalida la página actual (puede que ya no exista).
+      params.delete("pagina");
       router.push(`${pathname}?${params.toString()}`);
       onApply?.();
     },

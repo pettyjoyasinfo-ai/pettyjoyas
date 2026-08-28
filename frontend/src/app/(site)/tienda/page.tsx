@@ -4,11 +4,12 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
 import { ShopSort } from "@/components/shop/shop-sort";
+import { ShopPagination } from "@/components/shop/pagination";
 import { MobileFilterDrawer } from "@/components/shop/mobile-filter-drawer";
 import {
   getCategories,
   getMaterials,
-  getProducts,
+  getProductsPaginated,
   type ProductFilters,
 } from "@/lib/data/products";
 
@@ -38,11 +39,14 @@ export default async function TiendaPage({ searchParams }: { searchParams: SP })
     promo: str(sp.promo),
   };
 
-  const [products, categories, materials] = await Promise.all([
-    getProducts(filters),
+  const page = Math.max(1, Number(str(sp.pagina)) || 1);
+
+  const [productsPage, categories, materials] = await Promise.all([
+    getProductsPaginated(filters, page),
     getCategories(),
     getMaterials(),
   ]);
+  const products = productsPage.items;
 
   const activeCat = categories.find((c) => c.slug === filters.category);
   const heading = activeCat?.name ?? (filters.search ? `"${filters.search}"` : "Tienda");
@@ -90,8 +94,8 @@ export default async function TiendaPage({ searchParams }: { searchParams: SP })
           {/* Barra superior desktop: conteo + orden */}
           <div className="mb-6 hidden items-center justify-between gap-4 border-b border-line pb-4 lg:flex">
             <p className="text-sm text-muted">
-              {products.length}{" "}
-              {products.length === 1 ? "producto" : "productos"}
+              {productsPage.total}{" "}
+              {productsPage.total === 1 ? "producto" : "productos"}
             </p>
             <Suspense fallback={null}>
               <ShopSort />
@@ -100,11 +104,27 @@ export default async function TiendaPage({ searchParams }: { searchParams: SP })
 
           {/* Conteo mobile */}
           <p className="mb-4 text-sm text-muted lg:hidden">
-            {products.length}{" "}
-            {products.length === 1 ? "producto" : "productos"}
+            {productsPage.total}{" "}
+            {productsPage.total === 1 ? "producto" : "productos"}
           </p>
 
           <ProductGrid products={products} />
+
+          <ShopPagination
+            currentParams={{
+              categoria: filters.category,
+              coleccion: filters.collection,
+              material: filters.material,
+              min: sp.min ? String(str(sp.min)) : undefined,
+              max: sp.max ? String(str(sp.max)) : undefined,
+              oferta: filters.onSale ? "1" : undefined,
+              q: filters.search,
+              orden: filters.sort !== "relevancia" ? filters.sort : undefined,
+              promo: filters.promo,
+            }}
+            page={productsPage.page}
+            totalPages={productsPage.totalPages}
+          />
         </div>
       </div>
     </div>
