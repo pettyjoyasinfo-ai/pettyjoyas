@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class MediaController extends Controller
 {
@@ -29,10 +28,19 @@ class MediaController extends Controller
             : 'hero';
 
         $file = $request->file('file');
-        $name = Str::uuid() . '.webp';
+
+        // Dedup por contenido: si ya se subió esta misma imagen a esta carpeta
+        // (ej. la misma foto de una alianza subida de nuevo para cada talle),
+        // reusamos el archivo existente en vez de guardar una copia nueva.
+        // El nombre = hash del archivo original, así el mismo contenido
+        // siempre cae en el mismo path sin necesidad de una tabla aparte.
+        $hash = hash_file('sha256', $file->getRealPath());
+        $name = substr($hash, 0, 32) . '.webp';
         $relativePath = 'uploads/' . $folder . '/' . $name;
 
-        self::saveAsWebp($file, $relativePath);
+        if (! Storage::disk('public')->exists($relativePath)) {
+            self::saveAsWebp($file, $relativePath);
+        }
 
         return response()->json([
             'url' => Storage::disk('public')->url($relativePath),
