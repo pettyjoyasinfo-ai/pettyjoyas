@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { ProductGrid } from "@/components/product/product-grid";
 import { useProducts } from "@/lib/api/queries";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,15 @@ export function ProductTabs({
   initialProducts: Product[];
 }) {
   const [active, setActive] = useState<string>("");
-  const { data, isFetching } = useProducts(active ? { category: active } : {});
-  const products = (data ?? initialProducts).slice(0, 8);
+  const { data, isFetching, isError } = useProducts(active ? { category: active } : {});
+  // `initialProducts` (los de "Todas") solo se usan como fallback cuando esa
+  // es la pestaña activa. Antes se usaban SIEMPRE que `data` no estuviera
+  // disponible — si el fetch de una categoría fallaba o tardaba, la pestaña
+  // quedaba marcada como seleccionada pero mostrando los productos de
+  // "Todas" en silencio, sin ningún aviso (se veía como "el filtro no
+  // funciona").
+  const products = (active ? data : (data ?? initialProducts))?.slice(0, 8) ?? [];
+  const showEmpty = !isFetching && !isError && products.length === 0;
 
   const roots = categories.filter((c) => !c.parentSlug).slice(0, 11);
   const tabs = [{ slug: "", name: "Todas" }, ...roots.map((c) => ({ slug: c.slug, name: c.name }))];
@@ -48,7 +55,19 @@ export function ProductTabs({
       </div>
 
       <div className={cn("transition-opacity", isFetching && "opacity-60")}>
-        <ProductGrid products={products} />
+        {isError ? (
+          <p className="flex flex-col items-center gap-2 py-16 text-center text-sm text-muted">
+            No pudimos cargar estos productos. Probá de nuevo en un momento.
+          </p>
+        ) : isFetching && products.length === 0 ? (
+          <div className="flex justify-center py-16 text-muted">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : showEmpty ? (
+          <p className="py-16 text-center text-sm text-muted">Todavía no hay productos en esta categoría.</p>
+        ) : (
+          <ProductGrid products={products} />
+        )}
       </div>
 
       <div className="mt-12 text-center">

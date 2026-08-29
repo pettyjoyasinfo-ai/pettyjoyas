@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Script from "next/script";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SITE } from "@/lib/site";
@@ -20,7 +20,14 @@ declare global {
  * Los links se cargan desde el admin (Apariencia → Galería de Instagram).
  */
 export function InstagramFeed({ urls }: { urls?: string[] }) {
-  const posts = (urls ?? []).slice(0, 6);
+  // Memoizado por contenido (no por referencia): `urls` puede llegar con un
+  // array nuevo en cada render del padre aunque los links no cambien, y sin
+  // esto el efecto de abajo reprocesaba los embeds de Instagram en CADA
+  // render — generaba pedidos repetidos a Instagram por cada iframe
+  // (visible como spam de "Tracking Prevention blocked..." en la consola).
+  const key = (urls ?? []).slice(0, 6).join("|");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const posts = useMemo(() => (urls ?? []).slice(0, 6), [key]);
 
   // Re-procesa los blockquotes cada vez que cambia la lista (el script de
   // Instagram solo escanea el DOM una vez al cargar).
