@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
+use App\Support\RevalidateFrontend;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -110,6 +111,10 @@ class SettingController extends Controller
         foreach ($data as $key => $value) {
             SiteSetting::updateOrCreate(['key' => $key], ['value' => $value]);
         }
+
+        // El home (hero, banners, etc.) usa ISR — sin esto, los cambios acá no
+        // se verían hasta que venza el caché.
+        RevalidateFrontend::paths(['/']);
 
         return response()->json(SiteSetting::allWithDefaults());
     }

@@ -12,10 +12,14 @@ import {
 } from "@/lib/data/products";
 import { isApiConfigured } from "@/lib/api/client";
 
-// Sin esto, una ficha ya generada (primera visita) queda cacheada para
-// siempre — ediciones de precio/stock/imágenes en el admin no se verían
-// hasta el próximo deploy. Con ISR se revalida sola cada 60s.
-export const revalidate = 60;
+// ISR como red de seguridad, NO como mecanismo principal de frescura: cada
+// vez que se guarda un producto, el backend ya llama a /api/revalidate y
+// esta ficha se actualiza al instante (ver RevalidateFrontend en Laravel).
+// Este valor solo cubre el caso de que ese aviso falle. Antes estaba en 60s
+// — con 800+ productos eso generaba una cantidad enorme de escrituras ISR
+// (superó el límite mensual del plan de Vercel: 2.1M de 200K). 1 hora sigue
+// siendo un margen amplio para ese caso raro, sin ese costo.
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   // Con backend activo, las fichas se renderizan on-demand (no requieren la API

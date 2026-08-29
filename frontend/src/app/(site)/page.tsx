@@ -17,10 +17,12 @@ import {
 } from "@/lib/data/products";
 import { getSettings } from "@/lib/data/settings";
 
-// Sin esto, Next.js prerenderiza la home una sola vez en el build y los
-// cambios de /admin/configuracion (slides, banners, etc.) no se ven hasta el
-// próximo deploy. Con ISR, se revalida sola cada 60s sin perder el cacheo.
-export const revalidate = 60;
+// ISR como red de seguridad: /admin/configuracion (slides, banners, etc.) y
+// guardar un producto ya avisan a /api/revalidate al instante (ver
+// RevalidateFrontend), así que esto solo cubre el caso de que ese aviso
+// falle. Antes estaba en 60s — sumado a las 800+ fichas de producto, eso
+// generó muchísimas escrituras ISR (superó el límite mensual de Vercel).
+export const revalidate = 3600;
 
 export default async function HomePage() {
   const [categories, allProducts, bestSellers, settings] = await Promise.all([
