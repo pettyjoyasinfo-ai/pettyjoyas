@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { ProductGrid } from "@/components/product/product-grid";
 import { useProducts } from "@/lib/api/queries";
+import { visibleCategories } from "@/lib/data/products";
 import { cn } from "@/lib/utils";
 import type { Category, Product } from "@/lib/types";
 
@@ -26,7 +27,7 @@ export function ProductTabs({
   const products = (active ? data : (data ?? initialProducts))?.slice(0, 8) ?? [];
   const showEmpty = !isFetching && !isError && products.length === 0;
 
-  const roots = categories.filter((c) => !c.parentSlug).slice(0, 11);
+  const roots = visibleCategories(categories).filter((c) => !c.parentSlug).slice(0, 11);
   const tabs = [{ slug: "", name: "Todas" }, ...roots.map((c) => ({ slug: c.slug, name: c.name }))];
 
   return (

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Instagram, Mail, Phone } from "lucide-react";
 import { SITE } from "@/lib/site";
-import { getCategories } from "@/lib/data/products";
+import { getCategories, visibleCategories } from "@/lib/data/products";
 import { CATEGORIES } from "@/lib/data/seed";
 import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { Logo } from "@/components/layout/logo";
@@ -45,7 +45,7 @@ export async function SiteFooter() {
             Tienda
           </h3>
           <ul className="flex flex-col gap-2.5 text-sm">
-            {categories.filter((c) => !c.parentSlug).slice(0, 6).map((c) => (
+            {visibleCategories(categories).filter((c) => !c.parentSlug).slice(0, 6).map((c) => (
               <li key={c.slug}>
                 <Link
                   href={`/tienda?categoria=${c.slug}`}

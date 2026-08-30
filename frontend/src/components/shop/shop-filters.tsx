@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { visibleCategories } from "@/lib/data/products";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/lib/types";
 
@@ -97,7 +98,7 @@ export function ShopFilters({
   const [customMin, setCustomMin] = useState(current.min);
   const [customMax, setCustomMax] = useState(current.max);
 
-  const tree = useMemo(() => buildTree(categories), [categories]);
+  const tree = useMemo(() => buildTree(visibleCategories(categories)), [categories]);
 
   // Determine which parents should auto-expand (current slug is a child of them)
   const currentCat = categories.find((c) => c.slug === current.categoria);

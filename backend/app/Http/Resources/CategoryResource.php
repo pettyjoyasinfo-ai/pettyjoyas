@@ -17,6 +17,10 @@ class CategoryResource extends JsonResource
             'image' => $this->image,
             'featured' => (bool) $this->featured,
             'parentSlug' => $this->parent?->slug ?? null,
+            // true si tiene productos activos (directo o en subcategorías).
+            // El admin muestra todas las categorías igual; la tienda pública
+            // usa esto para no listar categorías todavía vacías.
+            'hasProducts' => (bool) ($this->has_products ?? true),
         ];
     }
 }

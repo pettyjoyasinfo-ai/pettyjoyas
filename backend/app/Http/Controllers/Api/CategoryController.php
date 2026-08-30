@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -17,7 +18,37 @@ class CategoryController extends Controller
             ->orderBy('name')
             ->get();
 
+        $this->attachHasProducts($categories);
+
         return CategoryResource::collection($categories);
+    }
+
+    /**
+     * Marca cada categoría con `has_products` (true si tiene productos
+     * activos cargados, directo o en alguna subcategoría) — el frontend lo
+     * usa para no mostrar en la navegación pública categorías vacías
+     * (existen en el admin, pero todavía nadie cargó nada ahí). El admin
+     * sigue viendo todas las categorías igual, con o sin productos.
+     */
+    private function attachHasProducts($categories): void
+    {
+        $counts = Product::where('active', true)
+            ->selectRaw('category_id, count(*) as total')
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id');
+
+        $childIds = [];
+        foreach ($categories as $c) {
+            if ($c->parent_id) {
+                $childIds[$c->parent_id][] = $c->id;
+            }
+        }
+
+        foreach ($categories as $c) {
+            $own = $counts->get($c->id, 0);
+            $childrenTotal = collect($childIds[$c->id] ?? [])->sum(fn ($id) => $counts->get($id, 0));
+            $c->has_products = ($own + $childrenTotal) > 0;
+        }
     }
 
     public function store(Request $request)

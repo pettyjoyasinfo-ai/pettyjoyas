@@ -10,6 +10,8 @@ export type Category = {
   featured?: boolean;
   /** Slug de la categoría padre, si es subcategoría. */
   parentSlug?: string | null;
+  /** true si tiene productos activos, directo o en subcategorías. */
+  hasProducts?: boolean;
 };
 
 export type ProductBadge = "nuevo" | "oferta" | "destacado" | "agotado";

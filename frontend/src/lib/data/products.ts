@@ -96,6 +96,16 @@ export async function getCategoryBySlug(slug: string): Promise<Category | undefi
   return (await getCategories()).find((c) => c.slug === slug);
 }
 
+/**
+ * Filtra categorías sin productos cargados (existen en el admin, pero
+ * todavía no tienen nada dentro) para no mostrarlas en navegación pública
+ * (tabs del home, menú "Tienda", filtros, footer). `hasProducts` viene del
+ * backend; si no viene (ej. mocks locales) se asume visible por compatibilidad.
+ */
+export function visibleCategories(categories: Category[]): Category[] {
+  return categories.filter((c) => c.hasProducts !== false);
+}
+
 export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
   if (!isApiConfigured()) return filterMock(filters);
   try {

@@ -8,6 +8,7 @@ import { useCart } from "@/lib/cart/store";
 import { useAuth } from "@/lib/auth/store";
 import { useFavoriteIds } from "@/lib/api/account";
 import { useCategories } from "@/lib/api/queries";
+import { visibleCategories } from "@/lib/data/products";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/layout/logo";
 import { MobileMenu } from "@/components/layout/mobile-menu";
@@ -101,8 +102,9 @@ export function SiteHeader() {
   const { data: favIds = [] } = useFavoriteIds();
   const favCount = favIds.length;
   const { data: rawCategories = [] } = useCategories();
+  const categories = visibleCategories(rawCategories);
 
-  const tree = buildTree(rawCategories);
+  const tree = buildTree(categories);
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -255,7 +257,7 @@ export function SiteHeader() {
         </div>
       )}
 
-      <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} categories={rawCategories} />
+      <MobileMenu open={mobileOpen} onClose={() => setMobileOpen(false)} categories={categories} />
     </header>
   );
 }
