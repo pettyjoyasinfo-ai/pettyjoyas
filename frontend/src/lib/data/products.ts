@@ -44,6 +44,14 @@ export type ProductFilters = {
   sort?: "relevancia" | "precio-asc" | "precio-desc" | "nuevos";
   /** Token de descuento por link único (?promo=...). */
   promo?: string;
+  /** Solo productos marcados como "destacado" en el admin. */
+  featured?: boolean;
+  /**
+   * Trae como máximo N productos (tope 100 en el backend). Para secciones
+   * que muestran unos pocos: sin esto se descarga el catálogo completo y se
+   * descarta el 98% en el front.
+   */
+  limit?: number;
 };
 
 function materialOf(p: Product): string[] {
@@ -65,6 +73,8 @@ function toQuery(filters: ProductFilters): string {
   if (filters.search) p.set("q", filters.search);
   if (filters.sort && filters.sort !== "relevancia") p.set("orden", filters.sort);
   if (filters.promo) p.set("promo", filters.promo);
+  if (filters.featured) p.set("destacado", "1");
+  if (typeof filters.limit === "number") p.set("limit", String(filters.limit));
   const qs = p.toString();
   return qs ? `?${qs}` : "";
 }
@@ -82,6 +92,7 @@ function filterMock(filters: ProductFilters): Product[] {
   if (typeof filters.minPrice === "number") list = list.filter((p) => p.price >= filters.minPrice!);
   if (typeof filters.maxPrice === "number") list = list.filter((p) => p.price <= filters.maxPrice!);
   if (filters.onSale) list = list.filter((p) => p.compareAtPrice && p.compareAtPrice > p.price);
+  if (filters.featured) list = list.filter((p) => p.badges.includes("destacado"));
   if (filters.search) {
     const q = filters.search.toLowerCase();
     list = list.filter(
@@ -98,7 +109,7 @@ function filterMock(filters: ProductFilters): Product[] {
     case "nuevos": list.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)); break;
     default: list.sort((a, b) => b.rating - a.rating);
   }
-  return list;
+  return typeof filters.limit === "number" ? list.slice(0, filters.limit) : list;
 }
 
 // ───────────────────────── Acceso público ─────────────────────────
@@ -214,34 +225,40 @@ export async function getProductById(id: string): Promise<Product | undefined> {
 // no tiran abajo la ficha de producto o la tienda que ya cargó bien.
 
 export async function getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
-  const all = await getProductsSafe();
-  return all
-    .filter(
-      (p) =>
-        p.id !== product.id &&
-        (p.categorySlug === product.categorySlug || p.collection === product.collection),
-    )
-    .slice(0, limit);
+  // Pide solo la categoría del producto (+1 por si viene él mismo en la
+  // lista) en vez de descargar el catálogo entero para filtrar en el front.
+  const sameCategory = await getProductsSafe({
+    category: product.categorySlug,
+    limit: limit + 1,
+  });
+  return sameCategory.filter((p) => p.id !== product.id).slice(0, limit);
 }
 
 export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
-  const all = await getProductsSafe();
-  return all.filter((p) => p.badges.includes("destacado")).slice(0, limit);
+  return await getProductsSafe({ featured: true, limit });
 }
 
 export async function getNewArrivals(limit = 8): Promise<Product[]> {
-  return (await getProductsSafe({ sort: "nuevos" })).slice(0, limit);
+  return await getProductsSafe({ sort: "nuevos", limit });
 }
 
 export async function getOnSaleProducts(limit = 8): Promise<Product[]> {
-  return (await getProductsSafe({ onSale: true })).slice(0, limit);
+  return await getProductsSafe({ onSale: true, limit });
 }
 
 /** Materiales disponibles para filtros (derivados del catálogo). */
 export async function getMaterials(): Promise<string[]> {
-  const all = await getProductsSafe();
+  if (isApiConfigured()) {
+    try {
+      // Endpoint dedicado: antes esto descargaba el catálogo completo
+      // (1.3 MB) en cada carga de /tienda sólo para juntar esta lista.
+      return await apiFetch<string[]>("/products/materials");
+    } catch {
+      return [];
+    }
+  }
   const set = new Set<string>();
-  all.forEach((p) => materialOf(p).forEach((m) => set.add(m)));
+  PRODUCTS.forEach((p) => materialOf(p).forEach((m) => set.add(m)));
   return [...set].sort();
 }
 

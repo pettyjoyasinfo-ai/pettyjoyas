@@ -25,9 +25,12 @@ import { getSettings } from "@/lib/data/settings";
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const [categories, allProducts, bestSellers, settings] = await Promise.all([
+  const [categories, initialProducts, bestSellers, settings] = await Promise.all([
     getCategories(),
-    getProducts(),
+    // ProductTabs muestra 8 productos: se piden 8, no los 856 del catálogo.
+    // Antes esta línea (más getFeaturedProducts) descargaba 1.3 MB dos o tres
+    // veces en cada refresco del home.
+    getProducts({ limit: 8 }),
     getFeaturedProducts(10),
     getSettings(),
   ]);
@@ -41,7 +44,7 @@ export default async function HomePage() {
       <Banners items={settings.banners.items} />
       <About data={settings.about} />
       <CategoryGrid categories={categories} />
-      <ProductTabs categories={categories} initialProducts={allProducts} />
+      <ProductTabs categories={categories} initialProducts={initialProducts} />
       <CollectionSplit data={settings.collection} />
       <BestSellers products={best} />
       <BrandsCarousel data={settings.brands} />

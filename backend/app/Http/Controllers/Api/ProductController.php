@@ -61,6 +61,13 @@ class ProductController extends Controller
         if ($request->boolean('oferta')) {
             $query->whereNotNull('compare_at_price')->whereColumn('compare_at_price', '>', 'price');
         }
+        // "destacado" es la única marca editorial manual (el resto de los
+        // badges se calculan al vuelo en ProductResource), así que se puede
+        // filtrar en la consulta — evita traer todo el catálogo al front
+        // sólo para quedarse con los destacados.
+        if ($request->boolean('destacado')) {
+            $query->whereJsonContains('badges', 'destacado');
+        }
         if ($q = $request->query('q')) {
             $query->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")
@@ -95,6 +102,14 @@ class ProductController extends Controller
             ]);
         }
 
+        // ?limit=N para secciones que muestran unos pocos productos (home:
+        // destacados, nuevos, tabs). Sin esto, el home descargaba el catálogo
+        // COMPLETO (1.3 MB, 856 productos) dos o tres veces para mostrar ~18
+        // — el grueso del excedente de transferencia en Vercel.
+        if ($request->filled('limit')) {
+            $query->limit(min(100, max(1, (int) $request->query('limit'))));
+        }
+
         $products = $query->get()->each(fn (Product $p) => $this->attachStock($p));
         $this->discounts->decorate($products, $request->query('promo'));
 
@@ -125,6 +140,33 @@ class ProductController extends Controller
      * reutilizar al cargar productos en serie. Se DERIVAN del catálogo real:
      * cuanto más se usa un valor, más arriba aparece. No requiere tabla aparte.
      */
+    /**
+     * Materiales disponibles para el filtro de /tienda, derivados del
+     * catálogo real. Antes el frontend descargaba TODOS los productos
+     * (1.3 MB) en cada carga de la tienda sólo para juntar esta lista.
+     */
+    public function materials()
+    {
+        $fromVariants = ProductVariant::query()
+            ->where('type', 'material')
+            ->whereNotNull('value')
+            ->where('value', '!=', '')
+            ->whereHas('product', fn ($q) => $q->where('active', true))
+            ->distinct()
+            ->pluck('value');
+
+        $fromSpecs = Product::query()
+            ->where('active', true)
+            ->whereNotNull('specs->material')
+            ->pluck('specs')
+            ->map(fn ($s) => is_array($s) ? ($s['material'] ?? null) : null)
+            ->filter();
+
+        return response()->json(
+            $fromVariants->merge($fromSpecs)->unique()->sort()->values()
+        );
+    }
+
     public function variantSuggestions()
     {
         $rows = \App\Models\ProductVariant::query()

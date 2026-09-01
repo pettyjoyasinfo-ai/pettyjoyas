@@ -53,6 +53,8 @@ Route::get('/settings', [SettingController::class, 'index']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/lookup', [ProductController::class, 'lookup']);
+// Debe ir ANTES de /products/{product}, si no "materials" se toma como slug.
+Route::get('/products/materials', [ProductController::class, 'materials']);
 Route::get('/products/{product}', [ProductController::class, 'show']);
 Route::get('/inventory/stock', [InventoryController::class, 'stock']);
 

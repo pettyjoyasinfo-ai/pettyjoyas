@@ -17,7 +17,11 @@ export function ProductTabs({
   initialProducts: Product[];
 }) {
   const [active, setActive] = useState<string>("");
-  const { data, isFetching, isError } = useProducts(active ? { category: active } : {});
+  // limit: 8 = lo que muestra esta sección. Sin esto, cada clic en una
+  // pestaña descargaba todos los productos de esa categoría para tirar 8.
+  const { data, isFetching, isError } = useProducts(
+    active ? { category: active, limit: 8 } : { limit: 8 },
+  );
   // `initialProducts` (los de "Todas") solo se usan como fallback cuando esa
   // es la pestaña activa. Antes se usaban SIEMPRE que `data` no estuviera
   // disponible — si el fetch de una categoría fallaba o tardaba, la pestaña
