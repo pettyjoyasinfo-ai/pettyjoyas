@@ -1,6 +1,28 @@
 import { CATEGORIES, COUPONS, PRODUCTS } from "@/lib/data/seed";
 import type { Category, Coupon, Product, ProductsPage } from "@/lib/types";
-import { apiFetch, isApiConfigured } from "@/lib/api/client";
+import { ApiError, apiFetch, isApiConfigured } from "@/lib/api/client";
+
+/**
+ * ⚠️ REGLA CLAVE DE ESTE ARCHIVO — no cachear fallas transitorias.
+ *
+ * Las páginas del sitio usan ISR (se cachean por un rato). Si ante un corte
+ * de red devolvemos "no existe" (undefined) o "no hay nada" ([]), Next.js
+ * cachea ESE resultado como si fuera la verdad: un producto real queda en
+ * 404, o la tienda queda vacía, hasta que venza el caché (una hora).
+ *
+ * Pasó de verdad: durante unos cortes de conexión al backend, fichas de
+ * producto válidas quedaron mostrando 404 y hubo que forzar la
+ * revalidación de las 800+ páginas a mano.
+ *
+ * Por eso:
+ *  - Un 404 REAL del backend sí significa "no existe" → devolvemos vacío.
+ *  - Cualquier otra falla (timeout, red caída, 500) se RELANZA. Next.js no
+ *    cachea una página que falló: sigue sirviendo la última versión buena y
+ *    reintenta en el próximo pedido. Es preferible a congelar un dato falso.
+ */
+function isRealNotFound(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 404;
+}
 
 /**
  * Capa de acceso al catálogo.
@@ -82,14 +104,9 @@ function filterMock(filters: ProductFilters): Product[] {
 // ───────────────────────── Acceso público ─────────────────────────
 export async function getCategories(): Promise<Category[]> {
   if (!isApiConfigured()) return CATEGORIES;
-  try {
-    return await apiFetch<Category[]>("/categories");
-  } catch {
-    // Nunca mostrar el catálogo de PRUEBA (seed.ts) en producción: si la API
-    // real falla, es mejor un listado vacío temporal que categorías falsas
-    // que no existen ni se pueden comprar.
-    return [];
-  }
+  // Sin catch: si la API falla, se relanza (ver regla del encabezado). Antes
+  // devolvía [] y eso quedaba cacheado como "la tienda no tiene categorías".
+  return await apiFetch<Category[]>("/categories");
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | undefined> {
@@ -108,13 +125,22 @@ export function visibleCategories(categories: Category[]): Category[] {
 
 export async function getProducts(filters: ProductFilters = {}): Promise<Product[]> {
   if (!isApiConfigured()) return filterMock(filters);
+  // Sin catch: nunca cachear "la tienda está vacía" por un corte de red, y
+  // nunca caer al catálogo de PRUEBA (seed.ts) en producción. Ver la regla
+  // del encabezado del archivo.
+  return await apiFetch<Product[]>(`/products${toQuery(filters)}`);
+}
+
+/**
+ * Igual que getProducts() pero tolera fallas: se usa en secciones
+ * secundarias/decorativas (relacionados, destacados, nuevos, ofertas). Que
+ * falle una de esas no justifica tirar abajo una página que por lo demás
+ * cargó bien — se muestran vacías y listo.
+ */
+async function getProductsSafe(filters: ProductFilters = {}): Promise<Product[]> {
   try {
-    return await apiFetch<Product[]>(`/products${toQuery(filters)}`);
+    return await getProducts(filters);
   } catch {
-    // Nunca mostrar el catálogo de PRUEBA (seed.ts) en producción: si la API
-    // real falla (ej. un hiccup de red), es mejor un listado vacío temporal
-    // — que se recupera solo en el próximo refresh/revalidate — que mostrar
-    // productos falsos que un cliente podría intentar comprar.
     return [];
   }
 }
@@ -144,25 +170,21 @@ export async function getProductsPaginated(
     };
   }
 
-  try {
-    const qs = toQuery(filters);
-    const sep = qs ? "&" : "?";
-    const res = await apiFetch<{
-      data: Product[];
-      meta: { currentPage: number; lastPage: number; perPage: number; total: number };
-    }>(`/products${qs}${sep}page=${page}&per_page=${perPage}`);
-    return {
-      items: res.data,
-      page: res.meta.currentPage,
-      totalPages: res.meta.lastPage,
-      total: res.meta.total,
-      perPage: res.meta.perPage,
-    };
-  } catch {
-    // Mismo criterio que getProducts(): ante una falla real, listado vacío
-    // (nunca el catálogo de prueba).
-    return { items: [], page: 1, totalPages: 1, total: 0, perPage };
-  }
+  // Sin catch: una falla de red se propaga para que Next.js no cachee una
+  // /tienda vacía. Ver la regla del encabezado del archivo.
+  const qs = toQuery(filters);
+  const sep = qs ? "&" : "?";
+  const res = await apiFetch<{
+    data: Product[];
+    meta: { currentPage: number; lastPage: number; perPage: number; total: number };
+  }>(`/products${qs}${sep}page=${page}&per_page=${perPage}`);
+  return {
+    items: res.data,
+    page: res.meta.currentPage,
+    totalPages: res.meta.lastPage,
+    total: res.meta.total,
+    perPage: res.meta.perPage,
+  };
 }
 
 export async function getProductBySlug(slug: string, promo?: string): Promise<Product | undefined> {
@@ -170,8 +192,13 @@ export async function getProductBySlug(slug: string, promo?: string): Promise<Pr
     try {
       const qs = promo ? `?promo=${encodeURIComponent(promo)}` : "";
       return await apiFetch<Product>(`/products/${slug}${qs}`);
-    } catch {
-      return undefined;
+    } catch (e) {
+      // Solo un 404 real del backend significa que el producto no existe.
+      if (isRealNotFound(e)) return undefined;
+      // Un corte de red NO es "producto inexistente": si devolviéramos
+      // undefined acá, la página llamaría a notFound() y Next.js cachearía
+      // ese 404 sobre un producto que sí existe. Ver la regla del encabezado.
+      throw e;
     }
   }
   return PRODUCTS.find((p) => p.slug === slug);
@@ -181,8 +208,13 @@ export async function getProductById(id: string): Promise<Product | undefined> {
   return (await getProducts()).find((p) => p.id === id);
 }
 
+// ── Secciones secundarias: usan getProductsSafe() a propósito ──
+// Son bloques decorativos ("también te puede gustar", destacados del home,
+// filtros de material). Si el catálogo no responde se muestran vacías, pero
+// no tiran abajo la ficha de producto o la tienda que ya cargó bien.
+
 export async function getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
-  const all = await getProducts();
+  const all = await getProductsSafe();
   return all
     .filter(
       (p) =>
@@ -193,21 +225,21 @@ export async function getRelatedProducts(product: Product, limit = 4): Promise<P
 }
 
 export async function getFeaturedProducts(limit = 8): Promise<Product[]> {
-  const all = await getProducts();
+  const all = await getProductsSafe();
   return all.filter((p) => p.badges.includes("destacado")).slice(0, limit);
 }
 
 export async function getNewArrivals(limit = 8): Promise<Product[]> {
-  return (await getProducts({ sort: "nuevos" })).slice(0, limit);
+  return (await getProductsSafe({ sort: "nuevos" })).slice(0, limit);
 }
 
 export async function getOnSaleProducts(limit = 8): Promise<Product[]> {
-  return (await getProducts({ onSale: true })).slice(0, limit);
+  return (await getProductsSafe({ onSale: true })).slice(0, limit);
 }
 
 /** Materiales disponibles para filtros (derivados del catálogo). */
 export async function getMaterials(): Promise<string[]> {
-  const all = await getProducts();
+  const all = await getProductsSafe();
   const set = new Set<string>();
   all.forEach((p) => materialOf(p).forEach((m) => set.add(m)));
   return [...set].sort();

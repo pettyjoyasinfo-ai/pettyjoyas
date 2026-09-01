@@ -2,12 +2,14 @@ import Link from "next/link";
 import { Instagram, Mail, Phone } from "lucide-react";
 import { SITE } from "@/lib/site";
 import { getCategories, visibleCategories } from "@/lib/data/products";
-import { CATEGORIES } from "@/lib/data/seed";
 import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { Logo } from "@/components/layout/logo";
 
 export async function SiteFooter() {
-  const categories = await getCategories().catch(() => [...CATEGORIES]);
+  // El footer es decorativo: si el catálogo no responde, se muestra sin la
+  // columna de categorías. Nunca con las de PRUEBA (seed.ts), que no existen
+  // en la tienda real.
+  const categories = await getCategories().catch(() => []);
 
   return (
     <footer className="mt-24 bg-ink text-white/80">
