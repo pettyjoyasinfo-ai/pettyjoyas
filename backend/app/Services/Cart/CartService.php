@@ -3,6 +3,7 @@
 namespace App\Services\Cart;
 
 use App\Models\Cart;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\Discounts\DiscountService;
@@ -142,6 +143,7 @@ class CartService
     public function snapshotFor(Cart $cart, ?string $promo = null): array
     {
         $cart->load(['items.product.category', 'items.product.variants', 'items.product.images', 'items.variant']);
+        $restrictedCategoryIds = Category::restrictedPaymentCategoryIds();
 
         $lines = [];
         foreach ($cart->items as $item) {
@@ -154,6 +156,7 @@ class CartService
                 $promo,
                 null,
                 $cart->id,
+                $restrictedCategoryIds,
             );
             $line['reservedUntil'] = $item->reserved_until?->toIso8601String();
             $lines[] = $line;
@@ -173,6 +176,7 @@ class CartService
     {
         $ids = collect($items)->pluck('product_id')->filter()->unique()->all();
         $products = Product::with(['category', 'variants', 'images'])->findMany($ids)->keyBy('id');
+        $restrictedCategoryIds = Category::restrictedPaymentCategoryIds();
 
         $lines = [];
         foreach ($items as $it) {
@@ -185,6 +189,8 @@ class CartService
                 null,
                 $promo,
                 $it,
+                null,
+                $restrictedCategoryIds,
             );
         }
 
@@ -204,6 +210,7 @@ class CartService
         ?string $promo,
         ?array $fallback = null,
         ?int $excludeCartId = null,
+        array $restrictedCategoryIds = [],
     ): array {
         // Producto inexistente o inactivo → no disponible.
         if (! $product || ! $product->active) {
@@ -224,10 +231,12 @@ class CartService
                 'maxStock' => 0,
                 'status' => 'unavailable',
                 'reservedUntil' => null,
+                'restrictedPayment' => $product && in_array($product->category_id, $restrictedCategoryIds, true),
             ];
         }
 
         $variant = $variantId ? $product->variants->firstWhere('id', $variantId) : null;
+        $restrictedPayment = in_array($product->category_id, $restrictedCategoryIds, true);
 
         // Se pidió una variante que ya no existe.
         if ($variantId && ! $variant) {
@@ -248,6 +257,7 @@ class CartService
                 'maxStock' => 0,
                 'status' => 'unavailable',
                 'reservedUntil' => null,
+                'restrictedPayment' => $restrictedPayment,
             ];
         }
 
@@ -284,6 +294,7 @@ class CartService
             'maxStock' => $available,
             'status' => $status,
             'reservedUntil' => null, // se sobreescribe en snapshotFor con el valor real
+            'restrictedPayment' => $restrictedPayment,
         ];
     }
 

@@ -113,6 +113,8 @@ export type CartItem = {
   availableStock?: number;
   /** ISO timestamp hasta el que el backend reserva estas unidades (solo usuarios logueados). */
   reservedUntil?: string | null;
+  /** true si el producto es de una categoría con pago restringido (ej. "Oro"): solo efectivo o transferencia. */
+  restrictedPayment?: boolean;
 };
 
 export type Coupon = {

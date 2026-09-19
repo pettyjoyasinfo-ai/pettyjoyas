@@ -1,10 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Cake, Check, Crown, Mail, Phone, RefreshCw, Rss, Send } from "lucide-react";
-import { Badge, Card, CardGrid, KV, PageHeader, StatCard } from "@/components/admin/ui";
+import { Badge, Card, CardGrid, PageHeader, StatCard } from "@/components/admin/ui";
 import { LoadingScreen, Spinner } from "@/components/ui/spinner";
 import { useAdminCustomer, useSendCustomerEmail, useUpdateCustomer } from "@/lib/api/admin";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -103,13 +104,25 @@ export default function ClienteDetalle() {
               {c.purchases.map((o: any) => (
                 <div key={o.id} className="rounded-2xl border border-line bg-white p-5">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="font-semibold text-ink">{o.number}</span>
+                    <span className="text-xs text-muted">{o.number} · {new Date(o.createdAt).toLocaleDateString("es-AR")}</span>
                     <Badge className={o.channel === "local" ? "bg-gold-100 text-gold-700" : "bg-blue-50 text-blue-700"}>{o.channel}</Badge>
                   </div>
-                  <div className="flex flex-col gap-1.5 border-t border-line pt-3">
-                    <KV label="Fecha">{new Date(o.createdAt).toLocaleDateString("es-AR")}</KV>
-                    <KV label="Items">{o.items?.length ?? 0}</KV>
-                    <KV label="Total"><span className="font-semibold">{formatPrice(o.total)}</span></KV>
+                  <ul className="flex flex-col gap-2.5 border-t border-line pt-3">
+                    {(o.items ?? []).map((it: any, idx: number) => (
+                      <li key={idx} className="flex items-center gap-3">
+                        <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-stone-bg">
+                          {it.image && <Image src={it.image} alt="" fill sizes="44px" className="object-cover" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm text-ink">{it.name}{it.variantLabel ? ` · ${it.variantLabel}` : ""}</p>
+                          <p className="text-xs text-muted">x{it.quantity}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 flex items-center justify-between border-t border-line pt-3 text-sm">
+                    <span className="text-muted">Total</span>
+                    <span className="font-semibold text-ink">{formatPrice(o.total)}</span>
                   </div>
                 </div>
               ))}

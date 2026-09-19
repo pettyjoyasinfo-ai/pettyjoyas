@@ -66,6 +66,7 @@ function fromSnapshot(snap: CartSnapshot): CartItem[] {
     availableStock: it.availableStock,
     status: it.status,
     reservedUntil: activeReservation(it.reservedUntil),
+    restrictedPayment: !!it.restrictedPayment,
   }));
 }
 

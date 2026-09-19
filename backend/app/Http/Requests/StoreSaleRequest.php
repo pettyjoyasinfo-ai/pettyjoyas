@@ -2,14 +2,48 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Sales\SalesService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreSaleRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true; // checkout online es público; el POS se protege por ruta
+    }
+
+    /**
+     * Categorías con pago restringido (ej. "Oro"): solo efectivo o transferencia.
+     * Esta misma Request también la usa el POS (channel=local, que sí puede
+     * cobrar con tarjeta en el local) — el POS manda channel explícito, la
+     * tienda online no, así que "no local" alcanza para distinguir.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            if ($this->input('channel') === 'local') {
+                return;
+            }
+
+            $paymentMethod = $this->input('payment_method');
+            if (in_array($paymentMethod, SalesService::RESTRICTED_PAYMENT_METHODS, true)) {
+                return;
+            }
+
+            $productIds = collect($this->input('items', []))->pluck('product_id')->filter()->all();
+            if (! $productIds) {
+                return;
+            }
+
+            if (app(SalesService::class)->hasRestrictedPaymentProduct($productIds)) {
+                $validator->errors()->add(
+                    'payment_method',
+                    'Los productos de la categoría Oro solo se pueden pagar con efectivo o transferencia.',
+                );
+            }
+        });
     }
 
     public function rules(): array

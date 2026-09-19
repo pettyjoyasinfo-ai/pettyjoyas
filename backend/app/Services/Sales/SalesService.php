@@ -2,6 +2,7 @@
 
 namespace App\Services\Sales;
 
+use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Product;
@@ -12,7 +13,21 @@ use Illuminate\Support\Facades\DB;
 
 class SalesService
 {
+    /** Únicos métodos de pago admitidos para pedidos con productos de categorías restringidas (ej. "Oro"). */
+    public const RESTRICTED_PAYMENT_METHODS = ['efectivo', 'transferencia'];
+
     public function __construct(private InventoryService $inventory) {}
+
+    /** ¿Alguno de estos productos pertenece a una categoría con pago restringido (ej. "Oro")? */
+    public function hasRestrictedPaymentProduct(array $productIds): bool
+    {
+        $categoryIds = Category::restrictedPaymentCategoryIds();
+        if (empty($categoryIds) || empty($productIds)) {
+            return false;
+        }
+
+        return Product::whereIn('id', $productIds)->whereIn('category_id', $categoryIds)->exists();
+    }
 
     /**
      * Resuelve los ítems a partir de [{product_id, product_variant_id?, quantity}],

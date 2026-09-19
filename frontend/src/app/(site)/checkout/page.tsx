@@ -100,6 +100,19 @@ export default function CheckoutPage() {
     shippingRates,
   });
 
+  // Productos de categorías con pago restringido (ej. "Oro"): solo efectivo o
+  // transferencia, sin importar si el envío es a domicilio o retiro en local.
+  const hasRestrictedPayment = items.some((it) => it.restrictedPayment);
+
+  // Si el carrito cambia (se agrega/saca un producto de oro) y el método de
+  // pago elegido ya no es válido, lo corrige antes de que el cliente intente confirmar.
+  useEffect(() => {
+    if (hasRestrictedPayment && (payment === "mercadopago" || payment === "tarjeta_credito")) {
+      setPayment("transferencia");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasRestrictedPayment]);
+
   // Evento estándar de Meta: alguien llegó al checkout con el carrito armado.
   // Una sola vez por visita a la página (no en cada re-render al tipear o
   // cambiar el método de envío/pago).
@@ -317,18 +330,40 @@ export default function CheckoutPage() {
                 Tu pedido quedará <strong>reservado</strong>. Te contactamos para coordinar el retiro y el pago en el local.
               </p>
             )}
+            {shipping === "envio" && payment === "efectivo" && (
+              <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Tu pedido quedará <strong>reservado</strong>. Te contactamos por WhatsApp para coordinar el pago en efectivo antes de enviarlo.
+              </p>
+            )}
           </Section>
 
           {/* Pago */}
           <Section step={3} title="Pago">
+            {hasRestrictedPayment && (
+              <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Tu carrito tiene productos de <strong>Oro</strong>: por esa categoría solo se puede pagar con
+                efectivo o transferencia.
+              </p>
+            )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <OptionCard
-                active={payment === "mercadopago"}
-                onClick={() => setPayment("mercadopago")}
-                icon={<CreditCard className="h-5 w-5" />}
-                title="MercadoPago"
-                desc="Tarjeta y débito"
-              />
+              {!hasRestrictedPayment && (
+                <>
+                  <OptionCard
+                    active={payment === "mercadopago"}
+                    onClick={() => setPayment("mercadopago")}
+                    icon={<CreditCard className="h-5 w-5" />}
+                    title="MercadoPago"
+                    desc="Tarjeta y débito"
+                  />
+                  <OptionCard
+                    active={payment === "tarjeta_credito"}
+                    onClick={() => setPayment("tarjeta_credito")}
+                    icon={<MessageCircle className="h-5 w-5" />}
+                    title="Tarjeta de crédito"
+                    desc="Te enviamos el link por WhatsApp"
+                  />
+                </>
+              )}
               <OptionCard
                 active={payment === "transferencia"}
                 onClick={() => setPayment("transferencia")}
@@ -336,20 +371,13 @@ export default function CheckoutPage() {
                 title="Transferencia"
                 desc={`${transferDiscountPct}% extra de descuento`}
               />
-              <OptionCard
-                active={payment === "tarjeta_credito"}
-                onClick={() => setPayment("tarjeta_credito")}
-                icon={<MessageCircle className="h-5 w-5" />}
-                title="Tarjeta de crédito"
-                desc="Te enviamos el link por WhatsApp"
-              />
-              {shipping === "retiro" && (
+              {(shipping === "retiro" || hasRestrictedPayment) && (
                 <OptionCard
                   active={payment === "efectivo"}
                   onClick={() => setPayment("efectivo")}
                   icon={<Store className="h-5 w-5" />}
-                  title="Efectivo en local"
-                  desc="Pagás al retirar"
+                  title={shipping === "retiro" ? "Efectivo en local" : "Efectivo"}
+                  desc={shipping === "retiro" ? "Pagás al retirar" : "Coordinamos el pago por WhatsApp"}
                 />
               )}
             </div>

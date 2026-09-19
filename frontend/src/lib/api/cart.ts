@@ -26,6 +26,8 @@ export type ServerCartItem = {
   maxStock: number;
   status: CartLineStatus;
   reservedUntil?: string | null;
+  /** true si el producto es de una categoría con pago restringido (ej. "Oro"): solo efectivo o transferencia. */
+  restrictedPayment?: boolean;
 };
 
 export type CartSnapshot = {

@@ -39,6 +39,18 @@ class CreateSaleAction
 
             $paymentMethod = $data['payment_method'] ?? null;
 
+            // Defensa en profundidad: la restricción real ya se valida en
+            // StoreSaleRequest para el checkout online; esto cubre cualquier
+            // otro caller de la Action. No aplica al POS (channel=local),
+            // donde sí se puede cobrar con tarjeta en el local.
+            if ($channel !== 'local') {
+                $productIds = array_map(fn ($line) => $line['product']->id, $lines);
+                if ($this->sales->hasRestrictedPaymentProduct($productIds)
+                    && ! in_array($paymentMethod, SalesService::RESTRICTED_PAYMENT_METHODS, true)) {
+                    abort(422, 'Los productos de la categoría Oro solo se pueden pagar con efectivo o transferencia.');
+                }
+            }
+
             // Descuento por transferencia (config de /admin/configuracion), sobre
             // el subtotal ya con el cupón aplicado. Separado del cupón para no
             // inflar el monto registrado en CouponRedemption más abajo.
