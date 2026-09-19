@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\OrderResource;
 use App\Models\CashRegister;
 use App\Models\CreditNote;
 use App\Models\Order;
+use App\Models\OrderItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,6 +25,18 @@ class CashRegisterController extends Controller
         }
 
         return response()->json($this->format($register));
+    }
+
+    /** GET /pos/cash-register/current/items — productos vendidos durante la caja abierta actual. */
+    public function currentItems(): JsonResponse
+    {
+        $register = CashRegister::current();
+
+        if (! $register) {
+            return response()->json([]);
+        }
+
+        return response()->json($this->itemsBreakdown($register));
     }
 
     /** POST /pos/cash-register/open — abre una nueva caja. */
@@ -92,6 +106,17 @@ class CashRegisterController extends Controller
             ->map(fn (CashRegister $r) => $this->format($r));
 
         return response()->json($registers);
+    }
+
+    /** GET /pos/cash-register/{cashRegister}/sales — detalle de todas las ventas de una sesión de caja. */
+    public function sales(CashRegister $cashRegister): JsonResponse
+    {
+        $orders = $cashRegister->salesQuery()
+            ->with(['items', 'customer'])
+            ->latest()
+            ->get();
+
+        return OrderResource::collection($orders)->response();
     }
 
     // ─── Notas de crédito ───────────────────────────────────
@@ -165,5 +190,31 @@ class CashRegisterController extends Controller
             'closed_by'      => $r->closedBy?->name,
             'summary'        => $summary,
         ];
+    }
+
+    /** Agrupa los items vendidos en la sesión por producto+variante (cantidad y monto totales). */
+    private function itemsBreakdown(CashRegister $register): array
+    {
+        $orderIds = $register->salesQuery()->pluck('id');
+
+        return OrderItem::query()
+            ->whereIn('order_id', $orderIds)
+            ->get()
+            ->groupBy(fn (OrderItem $it) => $it->product_id.'-'.$it->product_variant_id)
+            ->map(function ($group) {
+                $first = $group->first();
+
+                return [
+                    'productId'    => $first->product_id,
+                    'name'         => $first->name,
+                    'variantLabel' => $first->variant_label,
+                    'image'        => $first->image,
+                    'quantity'     => (int) $group->sum('quantity'),
+                    'total'        => (int) $group->sum(fn (OrderItem $it) => $it->unit_price * $it->quantity),
+                ];
+            })
+            ->sortByDesc('quantity')
+            ->values()
+            ->toArray();
     }
 }

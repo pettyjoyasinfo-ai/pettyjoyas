@@ -146,9 +146,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/pos/sales/{order}/edit', [PosController::class, 'editSale']);
     Route::get('/pos/daily-summary', [PosController::class, 'dailySummary']);
     Route::get('/pos/cash-register/current', [CashRegisterController::class, 'current']);
+    Route::get('/pos/cash-register/current/items', [CashRegisterController::class, 'currentItems']);
     Route::post('/pos/cash-register/open', [CashRegisterController::class, 'open']);
     Route::post('/pos/cash-register/close', [CashRegisterController::class, 'close']);
     Route::get('/pos/cash-register/history', [CashRegisterController::class, 'history']);
+    Route::get('/pos/cash-register/{cashRegister}/sales', [CashRegisterController::class, 'sales']);
     Route::get('/pos/credit-notes', [CashRegisterController::class, 'indexCreditNotes']);
     Route::post('/pos/credit-notes', [CashRegisterController::class, 'storeCreditNote']);
 

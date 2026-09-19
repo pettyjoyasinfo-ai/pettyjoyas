@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,15 +40,21 @@ class CashRegister extends Model
         return self::where('status', 'open')->latest()->first();
     }
 
-    /** Totales de ventas POS realizadas mientras esta caja estuvo (o está) abierta. */
-    public function salesSummary(): array
+    /** Ventas POS realizadas mientras esta caja estuvo (o está) abierta — base para el resumen y el detalle. */
+    public function salesQuery(): Builder
     {
         $to = $this->closed_at ?? now();
 
-        $rows = Order::query()
+        return Order::query()
             ->where('channel', 'local')
             ->whereIn('status', ['pagado', 'entregado'])
-            ->whereBetween('created_at', [$this->opened_at, $to])
+            ->whereBetween('created_at', [$this->opened_at, $to]);
+    }
+
+    /** Totales de ventas POS realizadas mientras esta caja estuvo (o está) abierta. */
+    public function salesSummary(): array
+    {
+        $rows = $this->salesQuery()
             ->selectRaw('payment_method, COUNT(*) as cnt, SUM(total) as total')
             ->groupBy('payment_method')
             ->get()

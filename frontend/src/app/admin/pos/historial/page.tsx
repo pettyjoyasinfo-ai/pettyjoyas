@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Banknote, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Banknote, Eye, TrendingUp, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, PageHeader } from "@/components/admin/ui";
 import { adminApiFetch } from "@/lib/api/client";
+import { PAYMENT_METHOD_LABEL } from "@/lib/status-styles";
 import { formatPrice } from "@/lib/utils";
 
 type RegisterSummary = {
@@ -27,6 +29,17 @@ type RegisterSummary = {
   };
 };
 
+type SaleDetail = {
+  id: string;
+  number: string;
+  status: string;
+  paymentMethod: string;
+  total: number;
+  customer: { name: string } | null;
+  items: { name: string; variantLabel: string | null; unitPrice: number; quantity: number }[];
+  createdAt: string;
+};
+
 function fmt(iso: string) {
   return new Date(iso).toLocaleString("es-AR", {
     day: "2-digit", month: "2-digit", year: "numeric",
@@ -34,7 +47,13 @@ function fmt(iso: string) {
   });
 }
 
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function PosHistorialPage() {
+  const [detailId, setDetailId] = useState<number | null>(null);
+
   const { data: registers = [], isLoading } = useQuery<RegisterSummary[]>({
     queryKey: ["pos", "cash-register", "history"],
     queryFn: () => adminApiFetch("/pos/cash-register/history"),
@@ -93,6 +112,12 @@ export default function PosHistorialPage() {
                         {r.status === "open" ? "Abierta" : "Cerrada"}
                       </Badge>
                       <span className="text-xs font-semibold text-ink">{formatPrice(r.summary.total)} total</span>
+                      <button
+                        onClick={() => setDetailId(r.id)}
+                        className="flex items-center gap-1 rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-ink transition hover:border-brand hover:text-brand"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> Ver detalles
+                      </button>
                     </div>
                   </div>
 
@@ -150,6 +175,62 @@ export default function PosHistorialPage() {
           })}
         </div>
       )}
+
+      {detailId != null && <SessionDetailModal cashRegisterId={detailId} onClose={() => setDetailId(null)} />}
     </>
+  );
+}
+
+function SessionDetailModal({ cashRegisterId, onClose }: { cashRegisterId: number; onClose: () => void }) {
+  const { data: sales = [], isLoading } = useQuery<SaleDetail[]>({
+    queryKey: ["pos", "cash-register", "sales", cashRegisterId],
+    queryFn: () => adminApiFetch(`/pos/cash-register/${cashRegisterId}/sales`),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4 backdrop-blur-sm">
+      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-line px-5 py-4">
+          <h3 className="text-base font-semibold text-ink">Ventas de la sesión</h3>
+          <button onClick={onClose} className="text-muted hover:text-ink">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto">
+          {isLoading ? (
+            <div className="py-16 text-center text-sm text-muted">Cargando ventas…</div>
+          ) : sales.length === 0 ? (
+            <div className="py-16 text-center text-sm text-muted">No hubo ventas en esta sesión.</div>
+          ) : (
+            <div className="divide-y divide-line">
+              {sales.map(s => (
+                <div key={s.id} className="px-5 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{s.number}</p>
+                      <p className="text-xs text-muted">
+                        {fmtTime(s.createdAt)} · {s.customer?.name ?? "Sin cliente"} · {PAYMENT_METHOD_LABEL[s.paymentMethod] ?? s.paymentMethod}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-semibold text-ink">{formatPrice(s.total)}</span>
+                  </div>
+                  <ul className="mt-2 space-y-1">
+                    {s.items.map((it, idx) => (
+                      <li key={idx} className="flex items-center justify-between gap-3 text-xs text-body">
+                        <span className="truncate">
+                          {it.name}{it.variantLabel ? ` · ${it.variantLabel}` : ""} x{it.quantity}
+                        </span>
+                        <span className="shrink-0">{formatPrice(it.unitPrice * it.quantity)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

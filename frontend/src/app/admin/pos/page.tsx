@@ -84,6 +84,13 @@ type DailySummary = {
 };
 type PayMode = "efectivo" | "transferencia" | "tarjeta";
 type LinkedCustomer = { id: number; name: string; email: string; vip: boolean };
+type SessionItem = {
+  productId: number | null;
+  name: string;
+  variantLabel: string | null;
+  quantity: number;
+  total: number;
+};
 
 // ─── Print helper ──────────────────────────────────────────────────────────
 
@@ -205,6 +212,14 @@ export default function AdminPOS() {
   const { data: daily } = useQuery<DailySummary>({
     queryKey: ["pos", "daily-summary"],
     queryFn:  () => adminApiFetch("/pos/daily-summary"),
+    refetchInterval: 30_000,
+    enabled: !!cashReg || skipCaja,
+  });
+
+  // ── productos vendidos en la caja abierta actual ──
+  const { data: sessionItems = [] } = useQuery<SessionItem[]>({
+    queryKey: ["pos", "cash-register", "current-items"],
+    queryFn:  () => adminApiFetch("/pos/cash-register/current/items"),
     refetchInterval: 30_000,
     enabled: !!cashReg || skipCaja,
   });
@@ -377,6 +392,9 @@ export default function AdminPOS() {
       setSaleSuccess({ orderNumber: res.order.number });
       void qc.invalidateQueries({ queryKey: ["pos", "daily-summary"] });
       void qc.invalidateQueries({ queryKey: ["pos", "cash-register"] });
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["pos", "cash-register", "current-items"] });
     },
     onError: (e: Error) => setSaleError(e.message || "No se pudo registrar la venta"),
   });
@@ -974,6 +992,27 @@ export default function AdminPOS() {
             </ul>
           )}
         </Card>
+
+        {/* Vendido en esta sesión — qué se vendió mientras la caja sigue abierta */}
+        {(cashReg || skipCaja) && (
+          <Card title="Vendido en esta sesión" padded={false}>
+            {sessionItems.length === 0 ? (
+              <p className="px-5 py-6 text-center text-xs text-muted">Todavía no se vendió nada en esta caja.</p>
+            ) : (
+              <ul className="max-h-64 divide-y divide-line overflow-y-auto">
+                {sessionItems.map(it => (
+                  <li key={`${it.productId ?? "sin-id"}-${it.variantLabel ?? ""}-${it.name}`} className="flex items-center justify-between gap-3 px-5 py-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-ink">{it.name}{it.variantLabel ? ` · ${it.variantLabel}` : ""}</p>
+                      <p className="text-xs text-muted">{it.quantity} {it.quantity === 1 ? "unidad" : "unidades"}</p>
+                    </div>
+                    <span className="shrink-0 text-sm font-medium text-ink">{formatPrice(it.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        )}
       </div>
 
       {/* ── Variant picker ─────────────────────────────────────────────── */}
