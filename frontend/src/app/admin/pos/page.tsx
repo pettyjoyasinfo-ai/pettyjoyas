@@ -869,7 +869,6 @@ export default function AdminPOS() {
                 <p className="text-center text-sm text-body">El cliente transfiere <span className="font-semibold text-ink">{formatPrice(total)}</span>:</p>
                 {transferInfo && (
                   <div className="rounded-xl bg-stone-50 p-4 text-sm space-y-2">
-                    <div className="flex justify-between"><span className="text-body">Banco</span><span className="font-medium text-ink">{transferInfo.bank}</span></div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-body">Alias</span>
                       <button onClick={() => copy(transferInfo.alias, "alias")} className="flex items-center gap-1.5 font-mono font-semibold text-ink hover:text-brand">

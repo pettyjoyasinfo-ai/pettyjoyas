@@ -282,10 +282,6 @@ export default function OrderConfirmedPage() {
             <div className="mt-4 rounded-xl bg-stone-50 p-4 text-sm">
               <p className="mb-3 font-semibold text-ink">Datos para transferir</p>
               <ul className="space-y-2">
-                <li className="flex items-center justify-between">
-                  <span className="text-body">Banco</span>
-                  <span className="font-medium text-ink">{order.transferInfo.bank}</span>
-                </li>
                 <li className="flex items-center justify-between gap-2">
                   <span className="text-body">Alias</span>
                   <button

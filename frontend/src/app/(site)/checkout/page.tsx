@@ -392,7 +392,6 @@ export default function CheckoutPage() {
                 <p className="mb-2 font-medium text-ink">Datos para transferir:</p>
                 {transferInfo ? (
                   <ul className="space-y-1">
-                    <li>Banco: <strong>{transferInfo.bank}</strong></li>
                     <li>Alias: <strong className="font-mono">{transferInfo.alias}</strong></li>
                     {transferInfo.cbu && <li>CBU: <span className="font-mono">{transferInfo.cbu}</span></li>}
                     <li>Titular: <strong>{transferInfo.holder}</strong></li>

@@ -23,7 +23,6 @@
                 <strong style="color:#821f40;">Transferí para confirmar tu pedido</strong><br>
                 @if (!empty($transfer['alias']))Alias: <strong>{{ $transfer['alias'] }}</strong><br>@endif
                 @if (!empty($transfer['cbu']))CBU: <strong>{{ $transfer['cbu'] }}</strong><br>@endif
-                @if (!empty($transfer['bank']))Banco: {{ $transfer['bank'] }}<br>@endif
                 @if (!empty($transfer['holder']))Titular: {{ $transfer['holder'] }}<br>@endif
                 <span style="display:inline-block; margin-top:8px; color:#5a5a5a;">Enviá el comprobante por WhatsApp y confirmamos tu pedido a la brevedad.</span>
             </td></tr>
