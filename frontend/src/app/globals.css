@@ -175,3 +175,119 @@
     transform: translateX(-50%);
   }
 }
+
+/* ───────────────────────────────────────────────────────────────
+   OCTUBRE ROSA — tema estacional de la tienda
+   Se activa solo en octubre (script de app/layout.tsx → html[data-theme="rosa"]).
+   Pisa los tokens de marca dentro de .tema-scope (envuelve solo la tienda, el
+   panel admin queda con la paleta de siempre). Forzar: ?tema=rosa · ?tema=normal
+   · ?tema=auto.
+   ─────────────────────────────────────────────────────────────── */
+.tema-rosa-only,
+.tema-rosa-flex {
+  display: none;
+}
+html[data-theme="rosa"] .tema-rosa-flex {
+  display: flex;
+}
+html[data-theme="rosa"] .tema-rosa-only {
+  display: block;
+}
+
+html[data-theme="rosa"] .tema-scope {
+  --color-brand-50: #fff5f8;
+  --color-brand-100: #ffe8ef;
+  --color-brand-200: #ffd0e0;
+  --color-brand-300: #fbaac6;
+  --color-brand-400: #f47aa6;
+  --color-brand-500: #e8508a;
+  --color-brand-600: #d63571;
+  --color-brand-700: #c42c68;
+  --color-brand-800: #a32454;
+  --color-brand-900: #831d44;
+  --color-brand: #c42c68;
+
+  /* El dorado pasa a oro rosado */
+  --color-gold-50: #fdf5f3;
+  --color-gold-100: #fae8e3;
+  --color-gold-200: #f3cfc6;
+  --color-gold-300: #e9b0a2;
+  --color-gold-400: #dc9486;
+  --color-gold-500: #c9786f;
+  --color-gold-600: #b3635c;
+  --color-gold-700: #964f4d;
+  --color-gold-800: #7a4143;
+  --color-gold-900: #653841;
+  --color-gold: #c9786f;
+
+  /* Fondos editoriales (hero, avatares) */
+  --color-khaki-100: #fdeff4;
+  --color-khaki-200: #f9d9e5;
+  --color-khaki-300: #f2b9cf;
+  --color-khaki-400: #e68fb0;
+  --color-khaki: #e68fb0;
+
+  /* Tinta ciruela en lugar de azul petróleo + neutros con un toque cálido */
+  --color-ink: #3a1424;
+  --color-ink-soft: #4d1d31;
+  --color-body: #6b5560;
+  --color-muted: #a3919a;
+  --color-line: #f4e1e8;
+  --color-cream: #fff7f9;
+  --color-stone-bg: #fdf3f6;
+}
+
+html[data-theme="rosa"] .tema-scope .announcement-bar svg {
+  color: rgba(255, 255, 255, 0.9);
+}
+html[data-theme="rosa"] .tema-scope .announcement-bar {
+  background-image: linear-gradient(90deg, #c42c68, #e8508a 50%, #c42c68);
+}
+
+/* Florcita antes de cada subtítulo de sección */
+html[data-theme="rosa"] .tema-scope .section-subtitle::before {
+  content: "";
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.55em;
+  vertical-align: -0.28em;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg transform='translate(50 50)' fill='%23f08fb2'%3E%3Cg id='p'%3E%3Cpath d='M0,-5 C-19,-14 -24,-41 -6,-48 L0,-43 L6,-48 C24,-41 19,-14 0,-5Z'/%3E%3C/g%3E%3Cuse href='%23p' transform='rotate(72)'/%3E%3Cuse href='%23p' transform='rotate(144)'/%3E%3Cuse href='%23p' transform='rotate(216)'/%3E%3Cuse href='%23p' transform='rotate(288)'/%3E%3Ccircle r='6' fill='%23e0a64f'/%3E%3C/g%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* Footer: filete rosa arriba */
+html[data-theme="rosa"] .tema-scope .footer-rosa {
+  border-top: 3px solid var(--color-brand-300);
+}
+
+@keyframes flor-giro {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes petalo-cae {
+  0% { transform: translate3d(0, -40px, 0) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate3d(28px, 50vh, 0) rotate(180deg); }
+  90% { opacity: 1; }
+  100% { transform: translate3d(-18px, 105vh, 0) rotate(360deg); opacity: 0; }
+}
+.flor-giro {
+  animation: flor-giro 90s linear infinite;
+}
+.flor-giro-inv {
+  animation: flor-giro 120s linear infinite reverse;
+}
+.petalo-cae {
+  animation: petalo-cae 15s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flor-giro,
+  .flor-giro-inv,
+  .petalo-cae {
+    animation: none;
+  }
+  .petalo-cae {
+    display: none;
+  }
+}

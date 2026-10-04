@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Jost, Cormorant_Garamond, Charm } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import "swiper/css";
 import "swiper/css/navigation";
@@ -66,6 +67,17 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+// Tema "Octubre Rosa": se decide antes del primer pintado para que no haya
+// parpadeo. Automático en octubre; ?tema=rosa|normal fuerza (queda guardado en
+// este navegador) y ?tema=auto vuelve a la fecha.
+const TEMA_ESTACIONAL = `(function(){var d=document.documentElement,f=null;
+try{var q=new URLSearchParams(location.search).get("tema");
+if(q==="rosa"||q==="normal")localStorage.setItem("petty-tema",q);
+else if(q==="auto")localStorage.removeItem("petty-tema");
+f=localStorage.getItem("petty-tema");}catch(e){}
+if(f?f==="rosa":new Date().getMonth()===9){d.setAttribute("data-theme","rosa");
+var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#c42c68");}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -75,7 +87,14 @@ export default function RootLayout({
     <html
       lang="es"
       className={`${jost.variable} ${cormorant.variable} ${charm.variable} h-full antialiased`}
+      // el script del tema agrega data-theme antes de hidratar
+      suppressHydrationWarning
     >
+      <head>
+        <Script id="tema-estacional" strategy="beforeInteractive">
+          {TEMA_ESTACIONAL}
+        </Script>
+      </head>
       <body suppressHydrationWarning className="flex min-h-full flex-col bg-white">
         <Providers>{children}</Providers>
       </body>

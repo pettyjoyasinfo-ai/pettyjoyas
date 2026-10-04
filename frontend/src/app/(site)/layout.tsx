@@ -9,7 +9,8 @@ import { MetaPixel } from "@/components/analytics/meta-pixel";
 /** Chrome de la tienda: anuncio, header, footer, carrito y chat. */
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    // .tema-scope acota el tema estacional (Octubre Rosa) a la tienda; el admin no se toca.
+    <div className="tema-scope flex flex-1 flex-col">
       <MetaPixel />
       <RouteProgress />
       <Announcement />
@@ -18,6 +19,6 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <SiteFooter />
       <CartDrawer />
       <ChatWidget />
-    </>
+    </div>
   );
 }

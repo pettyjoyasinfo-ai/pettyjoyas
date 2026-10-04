@@ -8,6 +8,7 @@ import { Autoplay, Pagination } from "swiper/modules";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Swiper as SwiperInstance } from "swiper";
 import type { HeroSlide } from "@/lib/data/settings";
+import { MesRosaHero } from "@/components/home/mes-rosa";
 
 export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
   const swiperRef = useRef<SwiperInstance | null>(null);
@@ -81,6 +82,8 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
           </SwiperSlide>
         ))}
       </Swiper>
+
+      <MesRosaHero />
 
       {/* Flecha anterior — pequeña en mobile (bottom), grande en desktop (center) */}
       <button

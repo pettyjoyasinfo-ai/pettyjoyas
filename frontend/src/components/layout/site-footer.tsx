@@ -12,7 +12,7 @@ export async function SiteFooter() {
   const categories = await getCategories().catch(() => []);
 
   return (
-    <footer className="mt-24 bg-ink text-white/80">
+    <footer className="footer-rosa mt-24 bg-ink text-white/80">
       <div className="container-px grid grid-cols-1 gap-12 py-16 md:grid-cols-2 lg:grid-cols-5">
         {/* Marca */}
         <div className="lg:col-span-2">
