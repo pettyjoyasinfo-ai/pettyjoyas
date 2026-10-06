@@ -74,7 +74,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
 
-        <Link href={`/producto/${product.slug}`} className="block h-full w-full">
+        <Link href={`/producto/${product.slug}`} prefetch={false} className="block h-full w-full">
           <Image
             src={cover}
             alt={product.name}
@@ -104,6 +104,7 @@ export function ProductCard({ product }: { product: Product }) {
           </button>
           <Link
             href={`/producto/${product.slug}`}
+            prefetch={false}
             aria-label="Ver producto"
             className="grid h-9 w-9 translate-x-12 place-items-center rounded-full bg-white text-ink shadow-md transition-all delay-75 duration-300 hover:bg-brand hover:text-white group-hover:translate-x-0"
           >
@@ -127,6 +128,7 @@ export function ProductCard({ product }: { product: Product }) {
         </span>
         <Link
           href={`/producto/${product.slug}`}
+          prefetch={false}
           className="font-display text-lg leading-snug text-ink transition hover:text-brand"
         >
           {product.name}

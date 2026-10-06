@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 /**
  * El backend (Laravel) llama a este endpoint después de guardar un producto,
@@ -25,13 +25,27 @@ export async function POST(request: NextRequest) {
       ? [body.path]
       : [];
 
-  if (paths.length === 0) {
-    return NextResponse.json({ revalidated: false, message: "Falta path/paths" }, { status: 400 });
+  // Etiquetas de caché de datos (ej. "categories", "settings", "products"):
+  // invalidan esa data en TODAS las páginas que la usan, no solo en un path.
+  const tags: string[] = Array.isArray(body.tags)
+    ? body.tags.filter((t: unknown): t is string => typeof t === "string" && t.length > 0)
+    : [];
+
+  if (paths.length === 0 && tags.length === 0) {
+    return NextResponse.json(
+      { revalidated: false, message: "Falta path/paths o tags" },
+      { status: 400 },
+    );
   }
 
   for (const path of paths) {
     revalidatePath(path);
   }
+  // "max" = stale-while-revalidate: la próxima visita recibe la copia vieja y
+  // en segundo plano se trae la nueva (no regenera las ~800 páginas de golpe).
+  for (const tag of tags) {
+    revalidateTag(tag, "max");
+  }
 
-  return NextResponse.json({ revalidated: true, paths });
+  return NextResponse.json({ revalidated: true, paths, tags });
 }

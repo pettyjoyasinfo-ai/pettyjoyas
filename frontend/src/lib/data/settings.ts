@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { apiFetch, isApiConfigured } from "@/lib/api/client";
 
 /**
@@ -148,10 +149,16 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   },
 };
 
-export async function getSettings(): Promise<SiteSettings> {
+// Caché de datos de Next (1 h, etiqueta "settings" para invalidar desde Laravel
+// al guardar) + `cache()` de React para pedirlo una sola vez por render: lo
+// usan el anuncio, los beneficios y el home a la vez. Ver nota en
+// lib/data/products.ts sobre por qué el TTL no puede bajar de 3600.
+export const getSettings = cache(async (): Promise<SiteSettings> => {
   if (!isApiConfigured()) return DEFAULT_SETTINGS;
   try {
-    const data = await apiFetch<Partial<SiteSettings>>("/settings");
+    const data = await apiFetch<Partial<SiteSettings>>("/settings", {
+      next: { revalidate: 3600, tags: ["settings"] },
+    });
     return {
       announcement: data.announcement ?? DEFAULT_SETTINGS.announcement,
       features:     data.features     ?? DEFAULT_SETTINGS.features,
@@ -166,4 +173,4 @@ export async function getSettings(): Promise<SiteSettings> {
   } catch {
     return DEFAULT_SETTINGS;
   }
-}
+});

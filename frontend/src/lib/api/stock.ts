@@ -21,8 +21,11 @@ export function useProductStock(productId: string) {
     queryKey: ["stock", productId],
     queryFn: () => apiFetch<LiveStock>(`/inventory/stock?product_id=${productId}`),
     enabled: isApiConfigured() && !!productId,
-    refetchInterval: 10000, // refresca cada 10 s (reservas de carrito se reflejan rápido)
+    // 45 s (antes 10 s): cada visitante con una ficha abierta golpeaba PHP+MySQL
+    // 6 veces por minuto. El stock real igual se valida en el servidor al
+    // agregar al carrito y al pagar, así que acá solo cambia lo que se ve.
+    refetchInterval: 45000,
     refetchOnWindowFocus: true, // y al volver a la pestaña
-    staleTime: 10000,
+    staleTime: 30000,
   });
 }

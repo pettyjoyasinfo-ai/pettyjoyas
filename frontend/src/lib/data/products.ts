@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { CATEGORIES, COUPONS, PRODUCTS } from "@/lib/data/seed";
 import type { Category, Coupon, Product, ProductsPage } from "@/lib/types";
 import { ApiError, apiFetch, isApiConfigured } from "@/lib/api/client";
@@ -23,6 +24,28 @@ import { ApiError, apiFetch, isApiConfigured } from "@/lib/api/client";
 function isRealNotFound(e: unknown): boolean {
   return e instanceof ApiError && e.status === 404;
 }
+
+/**
+ * Caché de datos de Next.js (Data Cache) para las llamadas públicas al
+ * backend. Existe para NO golpear a Laravel/MySQL en cada render: el hosting
+ * compartido rechaza conexiones cuando llegan muchas a la vez (error
+ * `SQLSTATE[HY000] [2002]`), y cada render de /tienda o de una ficha disparaba
+ * varias llamadas en paralelo con la misma respuesta.
+ *
+ *  - Next solo guarda respuestas 200: una falla NO queda cacheada (respeta la
+ *    regla de arriba) y, si el backend cae, se sigue sirviendo la última copia
+ *    buena hasta que se pueda revalidar.
+ *  - `tags` permite invalidar al instante desde Laravel (POST /api/revalidate
+ *    con `tags`). Los TTL son la red de seguridad si ese aviso falla.
+ *  - OJO: un `revalidate` menor al de la ruta le BAJA el intervalo a toda la
+ *    ruta. Las rutas ISR de este sitio usan 3600, así que lo que se llame
+ *    desde ahí tiene que usar >= 3600. Solo /tienda (dinámica, por
+ *    searchParams) puede usar un TTL corto.
+ */
+const CACHE_LONG = 3600;
+const CACHE_SHOP = 300;
+const TAG_CATEGORIES = "categories";
+const TAG_PRODUCTS = "products";
 
 /**
  * Capa de acceso al catálogo.
@@ -113,12 +136,17 @@ function filterMock(filters: ProductFilters): Product[] {
 }
 
 // ───────────────────────── Acceso público ─────────────────────────
-export async function getCategories(): Promise<Category[]> {
+// `cache()` de React: dentro de un mismo render (footer + página + header)
+// se pide una sola vez. El `fetch` de apiFetch lleva `signal` (timeout), y con
+// signal Next.js no deduplica por su cuenta.
+export const getCategories = cache(async (): Promise<Category[]> => {
   if (!isApiConfigured()) return CATEGORIES;
   // Sin catch: si la API falla, se relanza (ver regla del encabezado). Antes
   // devolvía [] y eso quedaba cacheado como "la tienda no tiene categorías".
-  return await apiFetch<Category[]>("/categories");
-}
+  return await apiFetch<Category[]>("/categories", {
+    next: { revalidate: CACHE_LONG, tags: [TAG_CATEGORIES] },
+  });
+});
 
 export async function getCategoryBySlug(slug: string): Promise<Category | undefined> {
   return (await getCategories()).find((c) => c.slug === slug);
@@ -139,7 +167,9 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
   // Sin catch: nunca cachear "la tienda está vacía" por un corte de red, y
   // nunca caer al catálogo de PRUEBA (seed.ts) en producción. Ver la regla
   // del encabezado del archivo.
-  return await apiFetch<Product[]>(`/products${toQuery(filters)}`);
+  return await apiFetch<Product[]>(`/products${toQuery(filters)}`, {
+    next: { revalidate: CACHE_LONG, tags: [TAG_PRODUCTS] },
+  });
 }
 
 /**
@@ -188,7 +218,9 @@ export async function getProductsPaginated(
   const res = await apiFetch<{
     data: Product[];
     meta: { currentPage: number; lastPage: number; perPage: number; total: number };
-  }>(`/products${qs}${sep}page=${page}&per_page=${perPage}`);
+  }>(`/products${qs}${sep}page=${page}&per_page=${perPage}`, {
+    next: { revalidate: CACHE_SHOP, tags: [TAG_PRODUCTS] },
+  });
   return {
     items: res.data,
     page: res.meta.currentPage,
@@ -198,7 +230,9 @@ export async function getProductsPaginated(
   };
 }
 
-export async function getProductBySlug(slug: string, promo?: string): Promise<Product | undefined> {
+// `cache()`: generateMetadata y la página piden el mismo producto en un render;
+// así sale una sola llamada a la API.
+export const getProductBySlug = cache(async (slug: string, promo?: string): Promise<Product | undefined> => {
   if (isApiConfigured()) {
     try {
       const qs = promo ? `?promo=${encodeURIComponent(promo)}` : "";
@@ -213,7 +247,7 @@ export async function getProductBySlug(slug: string, promo?: string): Promise<Pr
     }
   }
   return PRODUCTS.find((p) => p.slug === slug);
-}
+});
 
 export async function getProductById(id: string): Promise<Product | undefined> {
   return (await getProducts()).find((p) => p.id === id);
@@ -252,7 +286,9 @@ export async function getMaterials(): Promise<string[]> {
     try {
       // Endpoint dedicado: antes esto descargaba el catálogo completo
       // (1.3 MB) en cada carga de /tienda sólo para juntar esta lista.
-      return await apiFetch<string[]>("/products/materials");
+      return await apiFetch<string[]>("/products/materials", {
+        next: { revalidate: CACHE_LONG, tags: [TAG_PRODUCTS] },
+      });
     } catch {
       return [];
     }

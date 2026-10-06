@@ -91,7 +91,8 @@ function TiendaDropdown({
   );
 }
 
-export function SiteHeader() {
+/** `initialCategories`: las pide el layout en el servidor (ver (site)/layout.tsx). */
+export function SiteHeader({ initialCategories }: { initialCategories?: Category[] }) {
   const pathname = usePathname();
   const router = useRouter();
   const itemCount = useCart((s) => s.items.reduce((n, it) => n + it.quantity, 0));
@@ -101,7 +102,7 @@ export function SiteHeader() {
   const accountHref = authUser ? "/mi-cuenta" : "/cuenta";
   const { data: favIds = [] } = useFavoriteIds();
   const favCount = favIds.length;
-  const { data: rawCategories = [] } = useCategories();
+  const { data: rawCategories = [] } = useCategories(initialCategories);
   const categories = visibleCategories(rawCategories);
 
   const tree = buildTree(categories);
