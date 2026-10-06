@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
 use App\Models\Product;
+use App\Support\RevalidateFrontend;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -74,6 +75,9 @@ class CategoryController extends Controller
             'slug'        => $this->uniqueSlug($data['name'], $parentId),
         ]);
 
+        // El menú y el footer usan /categories desde la caché de datos de Next.
+        RevalidateFrontend::tags(['categories']);
+
         return new CategoryResource($category->load('parent'));
     }
 
@@ -103,6 +107,9 @@ class CategoryController extends Controller
         }
 
         $category->update($data);
+
+        // "products" también: las listas de productos llevan el nombre de la categoría.
+        RevalidateFrontend::tags(['categories', 'products']);
 
         return (new CategoryResource($category->load('parent')));
     }
@@ -166,6 +173,8 @@ class CategoryController extends Controller
         }
 
         $category->delete();
+
+        RevalidateFrontend::tags(['categories']);
 
         return response()->noContent();
     }

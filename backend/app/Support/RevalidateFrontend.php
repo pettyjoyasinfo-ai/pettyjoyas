@@ -16,25 +16,46 @@ use Illuminate\Support\Facades\Log;
  */
 class RevalidateFrontend
 {
-    /** Revalida la ficha de un producto + la tienda + el home. */
+    /**
+     * Revalida la ficha de un producto + la tienda + el home, e invalida las
+     * etiquetas de caché de datos "products" y "categories" (una categoría
+     * aparece o desaparece del menú según tenga productos activos).
+     */
     public static function product(string $slug): void
     {
-        self::paths(["/producto/{$slug}", '/tienda', '/']);
+        self::paths(["/producto/{$slug}", '/tienda', '/'], ['products', 'categories']);
     }
 
-    public static function paths(array $paths): void
+    /**
+     * Revalida páginas puntuales y, opcionalmente, etiquetas de caché de datos.
+     * Un frontend viejo (sin soporte de `tags`) ignora las etiquetas y revalida
+     * los paths igual, así que el orden de despliegue no rompe nada.
+     */
+    public static function paths(array $paths, array $tags = []): void
+    {
+        self::send(['paths' => $paths, 'tags' => $tags]);
+    }
+
+    /**
+     * Invalida etiquetas de la caché de datos de Next (ej. "categories",
+     * "settings", "products") en TODAS las páginas que usan esa data.
+     */
+    public static function tags(array $tags): void
+    {
+        self::send(['tags' => $tags]);
+    }
+
+    private static function send(array $payload): void
     {
         $url = config('services.frontend.revalidate_url');
         $secret = config('services.frontend.revalidate_secret');
-        if (! $url || ! $secret || ! $paths) {
+        $payload = array_filter($payload);
+        if (! $url || ! $secret || ! $payload) {
             return;
         }
 
         try {
-            Http::timeout(5)->post($url, [
-                'secret' => $secret,
-                'paths' => $paths,
-            ]);
+            Http::timeout(5)->post($url, ['secret' => $secret] + $payload);
         } catch (\Throwable $e) {
             Log::warning('RevalidateFrontend falló: '.$e->getMessage());
         }

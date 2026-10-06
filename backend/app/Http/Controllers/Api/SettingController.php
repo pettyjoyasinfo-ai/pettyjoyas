@@ -113,8 +113,9 @@ class SettingController extends Controller
         }
 
         // El home (hero, banners, etc.) usa ISR — sin esto, los cambios acá no
-        // se verían hasta que venza el caché.
-        RevalidateFrontend::paths(['/']);
+        // se verían hasta que venza el caché. La etiqueta "settings" invalida
+        // la copia de /settings que usan el anuncio, los beneficios y el home.
+        RevalidateFrontend::paths(['/'], ['settings']);
 
         return response()->json(SiteSetting::allWithDefaults());
     }
