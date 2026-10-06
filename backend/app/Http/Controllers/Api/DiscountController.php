@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DiscountResource;
 use App\Models\Discount;
+use App\Support\RevalidateFrontend;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -35,6 +36,7 @@ class DiscountController extends Controller
         }
 
         $discount = Discount::create($data);
+        $this->revalidatePrices();
 
         return (new DiscountResource($discount->load('category')))->response()->setStatusCode(201);
     }
@@ -42,6 +44,7 @@ class DiscountController extends Controller
     public function update(Request $request, Discount $discount)
     {
         $discount->update($this->validateData($request));
+        $this->revalidatePrices();
 
         return new DiscountResource($discount->load('category'));
     }
@@ -49,8 +52,19 @@ class DiscountController extends Controller
     public function destroy(Discount $discount)
     {
         $discount->delete();
+        $this->revalidatePrices();
 
         return response()->noContent();
+    }
+
+    /**
+     * El precio con descuento viaja dentro de los datos cacheados de productos
+     * (DiscountService::decorate), así que al cambiar un descuento hay que
+     * invalidar la etiqueta "products" para que tienda y fichas lo reflejen ya.
+     */
+    private function revalidatePrices(): void
+    {
+        RevalidateFrontend::paths(['/tienda', '/'], ['products']);
     }
 
     private function validateData(Request $request): array
