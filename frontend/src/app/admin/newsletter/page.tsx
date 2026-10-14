@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Crown, Download, ExternalLink, Mail, Trash2, Users } from "lucide-react";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api/client";
+import { adminApiFetch as apiFetch } from "@/lib/api/client";
 import { PageHeader } from "@/components/admin/ui";
 import { SEGMENT_STYLE } from "@/lib/status-styles";
 

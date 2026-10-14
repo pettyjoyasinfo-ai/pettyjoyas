@@ -100,7 +100,7 @@ Route::post('/whatsapp/webhook', [WhatsAppController::class, 'receive']);
 // Público; si viene un token de cliente, la IA puede consultar SUS pedidos.
 Route::post('/chat', [ChatController::class, 'send']);
 
-// ───────── Autenticado (staff) ─────────
+// ───────── Autenticado (cualquier usuario con sesión: clientes y staff) ─────────
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
@@ -122,7 +122,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/account/favorites', [AccountController::class, 'favorites']);
     Route::get('/account/favorites/ids', [AccountController::class, 'favoriteIds']);
     Route::post('/account/favorites/toggle', [AccountController::class, 'toggleFavorite']);
+});
 
+// ───────── Solo staff (admin o vendedor) ─────────
+// Todo lo del panel. Con auth:sanctum solo, cualquier cliente registrado podía
+// llamar a estas rutas: el rol se chequea acá (middleware `staff`).
+Route::middleware(['auth:sanctum', 'staff'])->group(function () {
     // Catálogo
     Route::post('/categories', [CategoryController::class, 'store']);
     Route::put('/categories/{category}', [CategoryController::class, 'update']);
