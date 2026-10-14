@@ -301,6 +301,12 @@ export default function NuevoProducto() {
               <p className="text-sm text-muted">Sin variantes: usá el stock simple del panel lateral. Agregá variantes si la pieza tiene talles/materiales. Cada variante puede tener su propia imagen: al elegirla en la tienda, se muestra esa foto.</p>
             ) : (
               <div className="flex flex-col gap-3">
+                {variants.some((v) => !Number(v.stock)) && (
+                  <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <strong>Ojo con el stock:</strong> una variante con stock 0 no se puede comprar, y si{" "}
+                    <strong>todas</strong> las variantes están en 0, el producto se oculta de la tienda.
+                  </p>
+                )}
                 {variants.map((v, i) => (
                   <div key={i} className="flex flex-col gap-3 rounded-xl border border-line p-3 sm:flex-row">
                     {/* Imagen de la variante */}

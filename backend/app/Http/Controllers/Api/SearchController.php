@@ -21,7 +21,9 @@ class SearchController extends Controller
         $like = "%{$q}%";
 
         $products = Product::where('active', true)
-            ->where(fn ($w) => $w->where('name', 'like', $like)->orWhere('sku', 'like', $like))
+            // El SKU y el código de barras viven en las variantes, no en products.
+            ->where(fn ($w) => $w->where('name', 'like', $like)
+                ->orWhereHas('variants', fn ($v) => $v->where('sku', 'like', $like)->orWhere('barcode', 'like', $like)))
             ->limit(5)
             ->get(['id', 'name', 'slug', 'price']);
 
@@ -49,7 +51,8 @@ class SearchController extends Controller
             'products' => $products->map(fn ($p) => [
                 'id'    => $p->id,
                 'label' => $p->name,
-                'sub'   => '$ ' . number_format($p->price / 100, 0, ',', '.'),
+                // Los precios se guardan en pesos enteros, no en centavos.
+                'sub'   => '$ ' . number_format($p->price, 0, ',', '.'),
                 'href'  => '/admin/productos',
             ]),
             'orders' => $orders->map(fn ($o) => [
