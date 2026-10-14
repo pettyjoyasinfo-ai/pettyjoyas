@@ -16,14 +16,14 @@ class StoreSaleRequest extends FormRequest
 
     /**
      * Categorías con pago restringido (ej. "Oro"): solo efectivo o transferencia.
-     * Esta misma Request también la usa el POS (channel=local, que sí puede
-     * cobrar con tarjeta en el local) — el POS manda channel explícito, la
-     * tienda online no, así que "no local" alcanza para distinguir.
+     * Esta misma Request también la usa el POS, que sí puede cobrar con
+     * tarjeta en el local. Se distingue por la ruta (/api/pos/*, protegida por
+     * auth), no por el campo `channel` del body, que el comprador controla.
      */
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            if ($this->input('channel') === 'local') {
+            if ($this->is('api/pos/*')) {
                 return;
             }
 

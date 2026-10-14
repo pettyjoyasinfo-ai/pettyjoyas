@@ -82,7 +82,9 @@ class OrderController extends Controller
     /** Checkout online (público). Crea la orden y devuelve el dato de pago según el método. */
     public function store(StoreSaleRequest $request, CreateSaleAction $action, PaymentService $payments)
     {
-        $data = ['channel' => 'online', ...$request->validated()];
+        // channel va al final a propósito: el comprador no puede elegir el canal
+        // (con channel=local salteaba la restricción de pago de Oro y quedaba "pagado").
+        $data = [...$request->validated(), 'channel' => 'online'];
 
         // El propio carrito del comprador (logueado o invitado) se excluye
         // al validar stock — su propia reserva no debe contar como "tomada"

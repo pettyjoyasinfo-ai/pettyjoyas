@@ -29,7 +29,7 @@ class PosController extends Controller
      */
     public function store(StoreSaleRequest $request, CreateSaleAction $action, PaymentService $payments)
     {
-        $data  = ['channel' => 'local', ...$request->validated()];
+        $data  = [...$request->validated(), 'channel' => 'local'];
         $order = $action->execute($data, $request->user()->id);
 
         $payment = match ($order->payment_method) {
