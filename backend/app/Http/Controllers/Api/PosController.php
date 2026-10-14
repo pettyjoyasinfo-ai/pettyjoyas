@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Sales\CreateManualSaleAction;
 use App\Actions\Sales\CreateSaleAction;
 use App\Actions\Sales\EditSaleAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreManualSaleRequest;
 use App\Http\Requests\StoreSaleRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
@@ -43,6 +45,18 @@ class PosController extends Controller
             'order'   => new OrderResource($order),
             'payment' => $payment,
         ], 201);
+    }
+
+    /**
+     * Venta manual: cobro libre (descripción + monto + medio de pago) de algo
+     * que no está cargado como producto. Queda como venta presencial pagada,
+     * así que suma al resumen del día y a la caja abierta; no toca stock.
+     */
+    public function storeManual(StoreManualSaleRequest $request, CreateManualSaleAction $action)
+    {
+        $order = $action->execute($request->validated(), $request->user()->id);
+
+        return response()->json(['order' => new OrderResource($order)], 201);
     }
 
     /** Admin confirma que llegó la transferencia de una venta POS. */

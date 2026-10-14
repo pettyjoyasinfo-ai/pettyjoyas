@@ -142,6 +142,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/orders/{order}/notify', [OrderController::class, 'notify']);
     Route::patch('/orders/{order}/confirm-payment', [PaymentController::class, 'confirmPayment']);
     Route::post('/pos/sales', [PosController::class, 'store']);
+    Route::post('/pos/sales/manual', [PosController::class, 'storeManual']);
     Route::patch('/pos/sales/{order}/confirm-transfer', [PosController::class, 'confirmTransfer']);
     Route::patch('/pos/sales/{order}/edit', [PosController::class, 'editSale']);
     Route::get('/pos/daily-summary', [PosController::class, 'dailySummary']);

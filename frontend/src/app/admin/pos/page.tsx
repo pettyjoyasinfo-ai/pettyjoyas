@@ -29,7 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge, Card, PageHeader } from "@/components/admin/ui";
+import { Badge, Card, FieldLabel, PageHeader } from "@/components/admin/ui";
 import { adminApiFetch, apiFetch } from "@/lib/api/client";
 import { enqueueEvent } from "@/lib/offline/db";
 import { syncOutbox } from "@/lib/offline/sync";
@@ -484,6 +484,41 @@ export default function AdminPOS() {
     onError: (e: Error) => { setCnError(e.message || "Error al emitir nota de crédito"); setCnSuccess(""); },
   });
 
+  // ── venta manual: cobro libre de algo que no está cargado como producto ──
+  const [showManual, setShowManual] = useState(false);
+  const [mDesc,   setMDesc]   = useState("");
+  const [mAmount, setMAmount] = useState(0);
+  const [mMethod, setMMethod] = useState<PayMode>("efectivo");
+  const [mNotes,  setMNotes]  = useState("");
+  const [mError,  setMError]  = useState("");
+  const [mDone,   setMDone]   = useState<{ number: string; total: number; method: PayMode } | null>(null);
+
+  function resetManual() {
+    setMDesc(""); setMAmount(0); setMMethod("efectivo"); setMNotes(""); setMError(""); setMDone(null);
+  }
+  function closeManual() { setShowManual(false); resetManual(); }
+
+  const manualSale = useMutation({
+    mutationFn: () =>
+      adminApiFetch<{ order: { number: string; total: number } }>("/pos/sales/manual", {
+        method: "POST",
+        body: JSON.stringify({
+          description: mDesc.trim(),
+          amount: Math.round(mAmount),
+          payment_method: mMethod,
+          notes: mNotes.trim() || null,
+        }),
+      }),
+    onSuccess: (res) => {
+      setMDone({ number: res.order.number, total: res.order.total, method: mMethod });
+      setMError("");
+      void qc.invalidateQueries({ queryKey: ["pos", "daily-summary"] });
+      void qc.invalidateQueries({ queryKey: ["pos", "cash-register"] });
+      void qc.invalidateQueries({ queryKey: ["pos", "cash-register", "current-items"] });
+    },
+    onError: (e: Error) => setMError(e.message || "No se pudo registrar la venta"),
+  });
+
   // ── captura global de scanner + atajos de teclado (ver tabla en el header) ──
   useEffect(() => {
     let buffer = "";
@@ -499,6 +534,7 @@ export default function AdminPOS() {
       if (e.key === "Escape") {
         if (pendingProduct) setPendingProduct(null);
         else if (saleSuccess) afterSale();
+        else if (showManual) closeManual();
         else if (showCreditNote) setShowCreditNote(false);
         else if (showCloseModal) setShowCloseModal(false);
         else if (showShortcuts) setShowShortcuts(false);
@@ -556,7 +592,7 @@ export default function AdminPOS() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingProduct, saleSuccess, showCreditNote, showCloseModal, showShortcuts]);
+  }, [pendingProduct, saleSuccess, showManual, showCreditNote, showCloseModal, showShortcuts]);
 
   // ─── Loading / Abrir caja ────────────────────────────────────────────────
 
@@ -675,6 +711,13 @@ export default function AdminPOS() {
               className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-brand hover:text-brand"
             >
               <ClipboardList className="h-3.5 w-3.5" /> Nota de crédito
+            </button>
+            <button
+              onClick={() => setShowManual(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-brand bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand hover:bg-brand hover:text-white"
+              title="Cobrar algo que no está cargado en el sistema"
+            >
+              <Plus className="h-3.5 w-3.5" /> Venta manual
             </button>
             {cashReg && !skipCaja && (
               <button
@@ -1220,6 +1263,106 @@ export default function AdminPOS() {
                   className="w-full btn-brand py-2.5 text-sm disabled:opacity-50"
                 >
                   {creditNote.isPending ? <Loader2 className="inline h-4 w-4 animate-spin" /> : "Emitir nota de crédito"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Venta manual ───────────────────────────────────────────────── */}
+      {showManual && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-display text-lg text-ink">Venta manual</h3>
+              <button onClick={closeManual} aria-label="Cerrar"><X className="h-4 w-4 text-muted" /></button>
+            </div>
+
+            {mDone ? (
+              <div className="py-4 text-center">
+                <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-green-50">
+                  <Check className="h-6 w-6 text-green-600" />
+                </div>
+                <p className="font-semibold text-ink">Venta registrada: {mDone.number}</p>
+                <p className="mt-1 text-sm text-muted">
+                  {formatPrice(mDone.total)} · {mDone.method === "efectivo" ? "Efectivo" : mDone.method === "tarjeta" ? "Tarjeta" : "Transferencia"}
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <button onClick={resetManual} className="flex-1 rounded-xl border border-line py-2.5 text-sm text-ink hover:border-brand hover:text-brand">
+                    Cargar otra
+                  </button>
+                  <button onClick={closeManual} className="btn-brand flex-1 py-2.5 text-sm">Listo</button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-muted">
+                  Para cobrar algo que no está cargado como producto. Suma a la caja y al resumen del día; no descuenta stock.
+                </p>
+                <label className="flex flex-col gap-1.5">
+                  <FieldLabel label="¿Qué se vendió?" required />
+                  <input
+                    value={mDesc}
+                    onChange={e => { setMDesc(e.target.value); setMError(""); }}
+                    maxLength={255}
+                    placeholder="Ej: Reloj Casio dorado"
+                    className="w-full rounded-xl border border-line px-3.5 py-2.5 text-sm outline-none focus:border-brand"
+                  />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <FieldLabel label="Monto cobrado (pesos)" required />
+                  <div className="flex items-center gap-1.5 rounded-xl border border-line px-3.5 py-2.5 focus-within:border-brand">
+                    <span className="text-sm text-muted">$</span>
+                    <input
+                      type="number" min="1" step="1" inputMode="numeric"
+                      value={mAmount || ""}
+                      onChange={e => { setMAmount(Number(e.target.value)); setMError(""); }}
+                      className="flex-1 bg-transparent text-sm outline-none"
+                    />
+                  </div>
+                </label>
+                <div className="flex flex-col gap-1.5">
+                  <FieldLabel label="Medio de pago" required />
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { key: "efectivo", label: "Efectivo", Icon: Banknote },
+                      { key: "tarjeta", label: "Tarjeta", Icon: CreditCard },
+                      { key: "transferencia", label: "Transfer.", Icon: Landmark },
+                    ] as const).map(({ key, label, Icon }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setMMethod(key)}
+                        className={`flex flex-col items-center gap-1 rounded-xl border py-2.5 text-xs font-medium transition ${
+                          mMethod === key ? "border-brand bg-brand-50 text-brand" : "border-line text-ink hover:border-brand"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" /> {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="flex flex-col gap-1.5">
+                  <FieldLabel label="Nota" optional />
+                  <textarea
+                    value={mNotes}
+                    onChange={e => setMNotes(e.target.value)}
+                    rows={2}
+                    maxLength={500}
+                    placeholder="Ej: lo pidió David"
+                    className="w-full resize-none rounded-xl border border-line px-3.5 py-2.5 text-sm outline-none focus:border-brand"
+                  />
+                </label>
+                {mError && <p className="text-xs text-red-500">{mError}</p>}
+                <button
+                  onClick={() => manualSale.mutate()}
+                  disabled={!mDesc.trim() || !(mAmount >= 1) || manualSale.isPending}
+                  className="btn-brand w-full py-2.5 text-sm disabled:opacity-50"
+                >
+                  {manualSale.isPending
+                    ? <Loader2 className="inline h-4 w-4 animate-spin" />
+                    : mAmount >= 1 ? `Registrar venta de ${formatPrice(Math.round(mAmount))}` : "Registrar venta"}
                 </button>
               </div>
             )}

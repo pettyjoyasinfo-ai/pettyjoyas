@@ -200,7 +200,9 @@ class CashRegisterController extends Controller
         return OrderItem::query()
             ->whereIn('order_id', $orderIds)
             ->get()
-            ->groupBy(fn (OrderItem $it) => $it->product_id.'-'.$it->product_variant_id)
+            // Ventas manuales: sin product_id, se agrupan por descripción (si no, todas
+            // quedarían juntas bajo la misma clave y se mostraría solo el nombre de la primera).
+            ->groupBy(fn (OrderItem $it) => ($it->product_id ?? 'manual:'.$it->name).'-'.$it->product_variant_id)
             ->map(function ($group) {
                 $first = $group->first();
 
