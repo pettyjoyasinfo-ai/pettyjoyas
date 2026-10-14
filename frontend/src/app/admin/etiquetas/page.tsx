@@ -136,8 +136,20 @@ function rotatedBarcode(value: string): { url: string; ratio: number } | null {
  * los problemas de centrado del texto rotado nativo de jsPDF). Se usa para
  * los dos datos manuales por etiqueta (ej. referencia + peso/multiplicador).
  */
-function rotatedLabelText(line1: string, line2: string): { url: string; ratio: number } | null {
-  if (typeof document === "undefined") return null;
+/**
+ * Posición de cada línea de texto dentro de la oreja (fracción del ancho). Con 1 o 2
+ * líneas son las de siempre (la etiqueta ya está calibrada así); con 3 (variante +
+ * referencia + peso) se reparten más juntas.
+ */
+function labelRowPositions(n: number): number[] {
+  if (n >= 3) return [0.2, 0.5, 0.8];
+  if (n === 2) return [0.32, 0.68];
+  return [0.5];
+}
+
+function rotatedLabelText(lines: string[]): { url: string; ratio: number } | null {
+  const rows = lines.filter(Boolean);
+  if (typeof document === "undefined" || rows.length === 0) return null;
   const W = 260, H = 140;
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -149,13 +161,17 @@ function rotatedLabelText(line1: string, line2: string): { url: string; ratio: n
   ctx.fillStyle = "#000";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = "bold 40px Helvetica, Arial, sans-serif";
-  if (line1 && line2) {
-    ctx.fillText(line1, W / 2, H * 0.32);
-    ctx.fillText(line2, W / 2, H * 0.68);
-  } else {
-    ctx.fillText(line1 || line2, W / 2, H / 2);
-  }
+  const pos = labelRowPositions(rows.length);
+  rows.forEach((text, i) => {
+    // Con 3 líneas la letra es más chica; si aun así no entra a lo ancho, se achica hasta que entre.
+    let size = rows.length >= 3 ? 30 : 40;
+    ctx.font = `bold ${size}px Helvetica, Arial, sans-serif`;
+    while (ctx.measureText(text).width > W - 12 && size > 14) {
+      size -= 2;
+      ctx.font = `bold ${size}px Helvetica, Arial, sans-serif`;
+    }
+    ctx.fillText(text, W / 2, H * pos[i]);
+  });
   return rotateCanvas90(canvas);
 }
 
@@ -179,10 +195,11 @@ function placeCentered(
 
 /**
  * Tag de dos orejas: en una oreja el código (QR o barras) rotado 90° (lleno),
- * en la otra los dos datos manuales de esa etiqueta (referencia + peso/multiplicador).
+ * en la otra el nombre de la variante (si tiene: talle, color…) y los dos datos
+ * manuales de esa etiqueta (referencia + peso/multiplicador).
  * La cola (debajo de las orejas) queda en blanco.
  */
-function drawFoldContent(doc: jsPDF, item: LabelItem, c: LabelSettings, manual: { ref: string; weight: string }) {
+function drawFoldContent(doc: jsPDF, item: LabelItem, c: LabelSettings, manual: { ref: string; weight: string; variant: string }) {
   const barcodeEarX = c.barcodeSide === "left" ? 0 : c.earW;
   const textEarX = c.barcodeSide === "left" ? c.earW : 0;
   const m = 0.8; // margen interno de cada oreja (chico: casi todo el espacio es para el contenido)
@@ -210,7 +227,7 @@ function drawFoldContent(doc: jsPDF, item: LabelItem, c: LabelSettings, manual: 
 
   // Oreja del texto: los dos datos manuales de esta etiqueta, dibujados en un
   // canvas y rotados 90°, pegados centrados como imagen (centrado exacto).
-  const txt = rotatedLabelText(manual.ref.trim(), manual.weight.trim());
+  const txt = rotatedLabelText([manual.variant.trim(), manual.ref.trim(), manual.weight.trim()]);
   if (txt) {
     placeCentered(doc, txt, textEarX + m + ox, m + oy, c.earW - 2 * m, c.earH - 2 * m, 0.92);
   }
@@ -229,6 +246,8 @@ export default function AdminEtiquetas() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Record<string, ManualFields>>({});
   const [generating, setGenerating] = useState(false);
+  // Imprime el nombre de la variante (talle, color…) junto a la referencia y el peso.
+  const [showVariant, setShowVariant] = useState(true);
   const [fold, setFold] = useState<LabelSettings>(DEFAULT_FOLD);
   const [dirty, setDirty] = useState(false);
 
@@ -369,7 +388,7 @@ export default function AdminEtiquetas() {
         for (let i = 0; i < info.qty; i++) {
           if (!first) doc.addPage([fold.pageW, fold.pageH], orientation);
           first = false;
-          drawFoldContent(doc, item, fold, { ref: info.ref.trim(), weight: info.weight.trim() });
+          drawFoldContent(doc, item, fold, { ref: info.ref.trim(), weight: info.weight.trim(), variant: showVariant ? item.variantLabel : "" });
         }
       }
       doc.save("etiquetas-joyeria.pdf");
@@ -562,6 +581,17 @@ export default function AdminEtiquetas() {
                   <option value="right">Oreja derecha</option>
                 </select>
               </label>
+              <label className="col-span-2 flex items-center gap-2 sm:col-span-3">
+                <input
+                  type="checkbox"
+                  checked={showVariant}
+                  onChange={e => setShowVariant(e.target.checked)}
+                  className="h-4 w-4 accent-brand"
+                />
+                <span className="text-[11px] font-medium text-ink">
+                  Imprimir la variante (talle, material, color…) en la etiqueta
+                </span>
+              </label>
               <label className="col-span-2 flex flex-col gap-1 sm:col-span-3">
                 <span className="text-[11px] font-medium text-ink">
                   Tamaño del código: {Math.round(fold.bcFill * 100)}%
@@ -643,28 +673,20 @@ export default function AdminEtiquetas() {
                     >
                      <div className="absolute inset-0" style={nudge}>
                       {(() => {
-                        const two = !!info.ref && !!info.weight;
-                        const line1Left = two ? fold.earW * 0.32 : fold.earW / 2;
-                        const line2Left = two ? fold.earW * 0.68 : fold.earW / 2;
+                        const lines = [showVariant ? queue[0].variantLabel : "", info.ref, info.weight].filter(Boolean);
+                        const pos = labelRowPositions(lines.length);
                         return (
                           <>
-                            {info.ref && (
+                            {lines.map((t, k) => (
                               <span
-                                className="absolute whitespace-nowrap text-[11px] font-bold text-ink"
-                                style={{ left: line1Left * scale, top: "50%", transform: "translate(-50%,-50%) rotate(-90deg)" }}
+                                key={k}
+                                className={`absolute whitespace-nowrap font-bold text-ink ${lines.length >= 3 ? "text-[9px]" : "text-[11px]"}`}
+                                style={{ left: pos[k] * fold.earW * scale, top: "50%", transform: "translate(-50%,-50%) rotate(-90deg)" }}
                               >
-                                {info.ref}
+                                {t}
                               </span>
-                            )}
-                            {info.weight && (
-                              <span
-                                className="absolute whitespace-nowrap text-[11px] font-bold text-ink"
-                                style={{ left: line2Left * scale, top: "50%", transform: "translate(-50%,-50%) rotate(-90deg)" }}
-                              >
-                                {info.weight}
-                              </span>
-                            )}
-                            {!info.ref && !info.weight && (
+                            ))}
+                            {lines.length === 0 && (
                               <span
                                 className="absolute whitespace-nowrap text-[9px] text-muted"
                                 style={{ left: "50%", top: "50%", transform: "translate(-50%,-50%) rotate(-90deg)" }}
