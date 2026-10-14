@@ -105,7 +105,7 @@ class ChatbotService
                 continue; // otra vuelta para que el modelo use los resultados
             }
 
-            return trim($message['content'] ?? '') ?: 'No estoy seguro de eso. ¿Lo reformulás?';
+            return $this->plainText((string) ($message['content'] ?? '')) ?: 'No estoy seguro de eso. ¿Lo reformulás?';
         }
 
         return 'Se me complicó armar la respuesta. ¿Me lo preguntás de otra forma? 🙏';
@@ -124,9 +124,39 @@ class ChatbotService
      */
     private function callModel(array $messages, bool $withTools = true): ?array
     {
+        $models = array_values(array_unique(array_filter([
+            config('services.ai.model'),
+            ...(array) config('services.ai.fallback_models', []),
+        ])));
+
+        foreach ($models as $i => $model) {
+            $result = $this->callOne($model, $messages, $withTools);
+            if ($result['ok']) {
+                return $result['message'];
+            }
+            // Solo tiene sentido probar otro modelo si este no está disponible (límite
+            // de tokens por minuto, modelo dado de baja, servicio caído). Un error de
+            // pedido mal armado no se arregla cambiando de modelo.
+            if (! $result['retryable']) {
+                return null;
+            }
+        }
+
+        Log::error('AI chat: ningún modelo pudo responder', ['modelos' => $models]);
+
+        return null;
+    }
+
+    /**
+     * Una llamada a un modelo puntual.
+     *
+     * @return array{ok: bool, message: ?array, retryable: bool}
+     */
+    private function callOne(string $model, array $messages, bool $withTools): array
+    {
         try {
             $body = [
-                'model'       => config('services.ai.model'),
+                'model'       => $model,
                 'messages'    => $messages,
                 'temperature' => 0.4,
             ];
@@ -140,17 +170,55 @@ class ChatbotService
 
             if ($response->failed()) {
                 if ($withTools && str_contains($response->body(), 'tool_use_failed')) {
-                    return $this->callModel($messages, withTools: false);
+                    return $this->callOne($model, $messages, false);
                 }
-                Log::error('AI chat error', ['status' => $response->status(), 'body' => $response->body()]);
-                return null;
+
+                $status = $response->status();
+                $retryable = in_array($status, [404, 408, 429, 500, 502, 503, 504], true)
+                    || ($status === 400 && str_contains($response->body(), 'model'));
+                $retryable
+                    ? Log::warning('AI chat: modelo no disponible, pruebo con el siguiente', ['model' => $model, 'status' => $status])
+                    : Log::error('AI chat error', ['model' => $model, 'status' => $status, 'body' => $response->body()]);
+
+                return ['ok' => false, 'message' => null, 'retryable' => $retryable];
             }
 
-            return $response->json('choices.0.message');
+            $m = $response->json('choices.0.message');
+            if (! is_array($m)) {
+                return ['ok' => false, 'message' => null, 'retryable' => false];
+            }
+
+            // Solo lo que hace falta para seguir la conversación: cada modelo agrega
+            // campos propios (ej. `reasoning`) que no conviene reenviar a otro.
+            $clean = ['role' => 'assistant', 'content' => $m['content'] ?? null];
+            if (! empty($m['tool_calls'])) {
+                $clean['tool_calls'] = $m['tool_calls'];
+            }
+
+            return ['ok' => true, 'message' => $clean, 'retryable' => false];
         } catch (\Throwable $e) {
-            Log::error('AI chat exception: '.$e->getMessage());
-            return null;
+            Log::warning('AI chat exception ('.$model.'): '.$e->getMessage());
+
+            return ['ok' => false, 'message' => null, 'retryable' => true];
         }
+    }
+
+    /**
+     * El widget del sitio y WhatsApp no interpretan markdown: se limpian los
+     * títulos, las negritas dobles y las viñetas para que no se vean los símbolos.
+     * En WhatsApp la negrita es con un solo asterisco, así que ahí se conserva.
+     */
+    private function plainText(string $text): string
+    {
+        $text = preg_replace('/^[ \t]{0,3}#{1,6}[ \t]*/m', '', $text) ?? $text;
+        $text = preg_replace(
+            '/\*\*(.+?)\*\*|__(.+?)__/s',
+            $this->channel === 'whatsapp' ? '*$1$2*' : '$1$2',
+            $text,
+        ) ?? $text;
+        $text = preg_replace('/^[ \t]*[-*][ \t]+/m', '• ', $text) ?? $text;
+
+        return trim($text);
     }
 
     // ─── System prompt ─────────────────────────────────────────────────────
@@ -195,6 +263,7 @@ class ChatbotService
         - Sé cálida, natural y con onda, en español rioplatense (vos/tenés). Como si charlaras por WhatsApp con alguien. Algún emoji ocasional está bien (💎💛✨), sin abusar.
         - NUNCA uses "che" (ni al inicio ni en el medio de una frase), ni muletillas como "posta", "boludo/a", "viste", "dale" — quedan demasiado informales para la marca. Mantené el trato cercano pero prolijo.
         - NUNCA escribas etiquetas de función, código ni cosas como <function=...> o {"name":...} en tu respuesta. Si necesitás un dato, llamá la herramienta de verdad (no la menciones en el texto). El cliente solo debe leer lenguaje natural.
+        - Escribí en texto plano: sin markdown (nada de **negritas**, # títulos ni tablas). Para mostrar varios productos usá líneas simples que empiecen con "• ".
         - Respondé SOLO lo que te preguntan. No tires información de más ni "vuelques" listas enteras de datos. Si alguien saluda o pregunta "¿qué podés hacer?", contestá en 1-2 frases, relajada, contando que ayudás con productos, precios, envíos, pagos y el estado de sus pedidos — SIN listar categorías, ni pedidos, ni datos que no pidió.
         - Frases cortas, tono humano. Nada de respuestas enciclopédicas ni con viñetas largas, salvo que muestres varios productos (ahí sí una lista corta va bien).
         - Si te preguntan algo general (ej. "hola", "qué venden"), respondé conversando y, si querés, tirá UNA pregunta para entender qué busca. No dispares todas las herramientas de una.

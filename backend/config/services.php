@@ -78,7 +78,15 @@ return [
     // proveedor alcanza con tocar estas 3 env vars, sin tocar código.
     'ai' => [
         'key'      => env('AI_API_KEY'),
-        'model'    => env('AI_MODEL', 'llama-3.3-70b-versatile'),
+        // Modelo principal + respaldos. Groq limita los tokens por minuto POR MODELO
+        // (en el plan gratis alcanza para 2-3 consultas por minuto en cada uno), así
+        // que si el principal responde 429 o fue dado de baja, se prueba con el
+        // siguiente. Los respaldos se separan con coma en AI_FALLBACK_MODELS.
+        'model'    => env('AI_MODEL', 'qwen/qwen3.8-27b'),
+        'fallback_models' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('AI_FALLBACK_MODELS', 'openai/gpt-oss-120b,openai/gpt-oss-20b')),
+        ))),
         'base_url' => env('AI_BASE_URL', 'https://api.groq.com/openai/v1'),
     ],
 
