@@ -35,8 +35,12 @@ class OrderController extends Controller
             ->when($request->query('estado'), fn ($q, $s) => $q->where('status', $s))
             ->when($request->query('canal'), fn ($q, $c) => $q->where('channel', $c))
             ->when($request->query('metodo_pago'), fn ($q, $m) => $q->where('payment_method', $m))
-            ->when($request->query('fecha_desde'), fn ($q, $f) => $q->whereDate('created_at', '>=', $f))
-            ->when($request->query('fecha_hasta'), fn ($q, $f) => $q->whereDate('created_at', '<=', $f))
+            // El "día" es el argentino: con whereDate se comparaba contra el día UTC y los pedidos
+            // de 21:00 a 24:00 quedaban en el día siguiente.
+            ->when($request->query('fecha_desde'), fn ($q, $f) => ($d = \App\Support\BusinessTime::startOfDay($f))
+                ? $q->where('created_at', '>=', $d->utc()) : $q)
+            ->when($request->query('fecha_hasta'), fn ($q, $f) => ($d = \App\Support\BusinessTime::endOfDay($f))
+                ? $q->where('created_at', '<=', $d->utc()) : $q)
             ->when($request->query('total_min'), fn ($q, $v) => $q->where('total', '>=', (int) $v))
             ->when($request->query('total_max'), fn ($q, $v) => $q->where('total', '<=', (int) $v))
             ->when($request->query('q'), function ($q, $search) {

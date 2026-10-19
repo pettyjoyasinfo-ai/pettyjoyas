@@ -97,10 +97,15 @@ class PosController extends Controller
     /** Resumen de ingresos POS del día (para la pantalla del cajero). */
     public function dailySummary()
     {
+        // "Hoy" = el día argentino. Laravel y la base trabajan en UTC: con today() el resumen
+        // se reiniciaba a las 21:00 de Argentina, media hora antes de que cierre el local.
+        $from = now(\App\Models\CashRegister::TZ)->startOfDay()->setTimezone(config('app.timezone'));
+
         $rows = Order::query()
             ->where('channel', 'local')
             ->whereIn('status', ['pagado', 'entregado'])
-            ->whereDate('created_at', today())
+            ->where('created_at', '>=', $from)
+            ->where('created_at', '<', $from->copy()->addDay())
             ->selectRaw('payment_method, COUNT(*) as count, SUM(total) as total')
             ->groupBy('payment_method')
             ->get()

@@ -9,7 +9,7 @@
                  preheader="Nuevo pedido {{ $order->number }} por ${{ number_format($order->total, 0, ',', '.') }} ({{ $methodLabel }}).">
 
     <h1 style="margin:0 0 6px; font-size:23px; color:#2b2b2b;">🛍️ Nuevo pedido {{ $order->number }}</h1>
-    <p style="margin:0 0 20px; font-size:14px; color:#5a5a5a;">{{ $channelLabel }} · {{ optional($order->created_at)->format('d/m/Y H:i') }}</p>
+    <p style="margin:0 0 20px; font-size:14px; color:#5a5a5a;">{{ $channelLabel }} · {{ \App\Support\BusinessTime::format($order->created_at) }}</p>
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f6; border-radius:12px; margin-bottom:22px;">
         <tr><td style="padding:16px 18px; font-size:14px; line-height:1.8; color:#2b2b2b;">

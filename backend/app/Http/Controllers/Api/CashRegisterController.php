@@ -15,13 +15,16 @@ class CashRegisterController extends Controller
 {
     // ─── Caja ───────────────────────────────────────────────
 
-    /** GET /pos/cash-register/current — caja actualmente abierta (204 si no hay ninguna). */
+    /** GET /pos/cash-register/current — caja actualmente abierta (null si no hay ninguna). */
     public function current(): JsonResponse|\Illuminate\Http\Response
     {
         $register = CashRegister::with(['openedBy'])->where('status', 'open')->latest()->first();
 
         if (! $register) {
-            return response()->noContent(); // 204 → apiFetch devuelve undefined → gate "Abrir caja"
+            // 200 con null (antes 204): así el frontend distingue "no hay caja abierta" de
+            // "falló la consulta". Un error de red o del servidor no debe mostrar la pantalla
+            // de apertura como si la caja se hubiera cerrado sola.
+            return response()->json(null);
         }
 
         return response()->json($this->format($register));
@@ -39,7 +42,18 @@ class CashRegisterController extends Controller
         return response()->json($this->itemsBreakdown($register));
     }
 
-    /** POST /pos/cash-register/open — abre una nueva caja. */
+    /**
+     * GET /pos/cash-register/last-closed — la caja que se abrió y cerró HOY (null si no hay).
+     * El POS la usa para avisar que, al abrir de nuevo, se continúa esa misma caja.
+     */
+    public function lastClosed(): JsonResponse
+    {
+        $register = CashRegister::closedToday();
+
+        return response()->json($register ? $this->format($register->load(['openedBy', 'closedBy'])) : null);
+    }
+
+    /** POST /pos/cash-register/open — abre una nueva caja (o continúa la que se cerró hoy). */
     public function open(Request $request): JsonResponse
     {
         if (CashRegister::current()) {
@@ -50,6 +64,24 @@ class CashRegisterController extends Controller
             'opening_amount' => ['required', 'integer', 'min:0'],
             'notes'          => ['nullable', 'string', 'max:500'],
         ]);
+
+        // Una sola caja por día: si hoy ya se abrió y cerró una, se la continúa en vez de crear
+        // otra (el resumen y el conteo quedan juntos). El efectivo declarado al abrir se anota.
+        $same = CashRegister::closedToday();
+        if ($same) {
+            $hora = now(CashRegister::TZ)->format('H:i');
+            $declarado = number_format((int) $data['opening_amount'], 0, ',', '.');
+            $same->update([
+                'status'         => 'open',
+                'closed_at'      => null,
+                'closed_by'      => null,
+                'closing_amount' => null,
+                'expected_cash'  => null,
+                'notes'          => trim(($same->notes ? $same->notes."\n" : '')."Continuada {$hora}: efectivo en cajón declarado \${$declarado}"),
+            ]);
+
+            return response()->json([...$this->format($same->load('openedBy')), 'continued' => true]);
+        }
 
         $register = CashRegister::create([
             'opened_by'      => $request->user()->id,
@@ -72,7 +104,8 @@ class CashRegisterController extends Controller
         }
 
         $data = $request->validate([
-            'closing_amount' => ['required', 'integer', 'min:0'],
+            // null = se cerró SIN contar el efectivo: no hay "diferencia" que informar.
+            'closing_amount' => ['nullable', 'integer', 'min:0'],
             'notes'          => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -82,7 +115,7 @@ class CashRegisterController extends Controller
         $register->update([
             'closed_by'      => $request->user()->id,
             'closed_at'      => now(),
-            'closing_amount' => $data['closing_amount'],
+            'closing_amount' => $data['closing_amount'] ?? null,
             'expected_cash'  => $expectedCash,
             'notes'          => $data['notes'] ?? $register->notes,
             'status'         => 'closed',
@@ -92,7 +125,7 @@ class CashRegisterController extends Controller
             ...$this->format($register->load(['openedBy', 'closedBy'])),
             'summary'  => $summary,
             'expected' => $expectedCash,
-            'diff'     => $data['closing_amount'] - $expectedCash,
+            'diff'     => isset($data['closing_amount']) ? $data['closing_amount'] - $expectedCash : null,
         ]);
     }
 

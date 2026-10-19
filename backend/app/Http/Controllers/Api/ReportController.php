@@ -27,8 +27,9 @@ class ReportController extends Controller
     public function comparison(Request $request)
     {
         $period     = $request->query('periodo', 'mensual');
-        $customFrom = $request->query('from') ? CarbonImmutable::parse($request->query('from'))->startOfDay() : null;
-        $customTo   = $request->query('to')   ? CarbonImmutable::parse($request->query('to'))->endOfDay()   : null;
+        // Hora argentina (el servicio la pasa a UTC para consultar la base).
+        $customFrom = $request->query('from') ? \App\Support\BusinessTime::startOfDay($request->query('from')) : null;
+        $customTo   = $request->query('to')   ? \App\Support\BusinessTime::endOfDay($request->query('to'))     : null;
 
         return response()->json($this->reports->comparison($period, $customFrom, $customTo));
     }
@@ -55,12 +56,12 @@ class ReportController extends Controller
     public function paymentBreakdown(Request $request)
     {
         if ($request->query('from') && $request->query('to')) {
-            $from = CarbonImmutable::parse($request->query('from'))->startOfDay();
-            $to   = CarbonImmutable::parse($request->query('to'))->endOfDay();
+            $from = \App\Support\BusinessTime::startOfDay($request->query('from'))?->utc() ?? CarbonImmutable::now()->subDays(30);
+            $to   = \App\Support\BusinessTime::endOfDay($request->query('to'))?->utc() ?? CarbonImmutable::now();
         } else {
             $days = (int) $request->query('dias', 30);
             $to   = CarbonImmutable::now();
-            $from = $to->subDays($days)->startOfDay();
+            $from = \App\Support\BusinessTime::startOfDay($to->subDays($days)->setTimezone(\App\Support\BusinessTime::TZ)->toDateString())->utc();
         }
 
         $rows = Order::query()

@@ -153,6 +153,7 @@ Route::middleware(['auth:sanctum', 'staff'])->group(function () {
     Route::get('/pos/daily-summary', [PosController::class, 'dailySummary']);
     Route::get('/pos/cash-register/current', [CashRegisterController::class, 'current']);
     Route::get('/pos/cash-register/current/items', [CashRegisterController::class, 'currentItems']);
+    Route::get('/pos/cash-register/last-closed', [CashRegisterController::class, 'lastClosed']);
     Route::post('/pos/cash-register/open', [CashRegisterController::class, 'open']);
     Route::post('/pos/cash-register/close', [CashRegisterController::class, 'close']);
     Route::get('/pos/cash-register/history', [CashRegisterController::class, 'history']);

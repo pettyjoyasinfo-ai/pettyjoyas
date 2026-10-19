@@ -47,7 +47,8 @@ class ReportService
     /** Compara un periodo contra el inmediatamente anterior de igual duracion. */
     public function comparison(string $period, ?CarbonImmutable $customFrom = null, ?CarbonImmutable $customTo = null): array
     {
-        $now = CarbonImmutable::now();
+        // Los límites de mes/trimestre/año son los del día argentino; se pasan a UTC al consultar.
+        $now = CarbonImmutable::now(\App\Support\BusinessTime::TZ);
 
         if ($period === 'custom' && $customFrom !== null && $customTo !== null) {
             $duration = (int) $customFrom->diffInSeconds($customTo);
@@ -59,8 +60,8 @@ class ReportService
 
             return [
                 'period'   => 'custom',
-                'current'  => array_merge(['label' => $curLabel],  $this->dashboard($customFrom, $customTo)),
-                'previous' => array_merge(['label' => $prevLabel], $this->dashboard($prevFrom, $prevTo)),
+                'current'  => array_merge(['label' => $curLabel],  $this->dashboard($customFrom->utc(), $customTo->utc())),
+                'previous' => array_merge(['label' => $prevLabel], $this->dashboard($prevFrom->utc(), $prevTo->utc())),
             ];
         }
 
@@ -89,8 +90,8 @@ class ReportService
 
         return [
             'period'   => $period,
-            'current'  => array_merge(['label' => $labelCur],  $this->dashboard($curFrom, $curTo)),
-            'previous' => array_merge(['label' => $labelPrev], $this->dashboard($prevFrom, $prevTo)),
+            'current'  => array_merge(['label' => $labelCur],  $this->dashboard($curFrom->utc(), $curTo->utc())),
+            'previous' => array_merge(['label' => $labelPrev], $this->dashboard($prevFrom->utc(), $prevTo->utc())),
         ];
     }
 

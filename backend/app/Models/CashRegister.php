@@ -34,10 +34,30 @@ class CashRegister extends Model
         return $this->hasMany(CreditNote::class);
     }
 
+    /** Zona horaria del negocio (la base y Laravel trabajan en UTC, 3 horas adelantado). */
+    public const TZ = \App\Support\BusinessTime::TZ;
+
     /** Caja actualmente abierta (debería haber máximo una). */
     public static function current(): ?self
     {
         return self::where('status', 'open')->latest()->first();
+    }
+
+    /**
+     * La caja más reciente que se abrió Y se cerró hoy (día argentino). Si existe, abrir
+     * caja de nuevo la CONTINÚA en vez de crear otra: una sola caja por jornada, así el
+     * resumen del día no queda repartido entre 3 o 4 cajas.
+     */
+    public static function closedToday(): ?self
+    {
+        $today = now(self::TZ)->toDateString();
+
+        return self::where('status', 'closed')
+            ->where('closed_at', '>=', now()->subDay())
+            ->orderByDesc('closed_at')
+            ->get()
+            ->first(fn (self $r) => $r->opened_at->copy()->setTimezone(self::TZ)->toDateString() === $today
+                && $r->closed_at?->copy()->setTimezone(self::TZ)->toDateString() === $today);
     }
 
     /** Ventas POS realizadas mientras esta caja estuvo (o está) abierta — base para el resumen y el detalle. */
