@@ -75,6 +75,8 @@ export default function PosHistorialPage() {
         }
       />
 
+      {!isLoading && registers.length > 0 && <DaySummary registers={registers} />}
+
       {isLoading ? (
         <div className="py-16 text-center text-sm text-muted">Cargando historial…</div>
       ) : registers.length === 0 ? (
@@ -154,7 +156,7 @@ export default function PosHistorialPage() {
                       </div>
                       <div>
                         <span className="text-muted">Contado</span>
-                        <span className="ml-1.5 font-medium text-ink">{r.closing_amount != null ? formatPrice(r.closing_amount) : "—"}</span>
+                        <span className="ml-1.5 font-medium text-ink">{r.closing_amount != null ? formatPrice(r.closing_amount) : "Sin conteo"}</span>
                       </div>
                       {diff != null && (
                         <div className={diff < 0 ? "text-red-600" : diff > 0 ? "text-amber-700" : "text-green-700"}>
@@ -232,5 +234,78 @@ function SessionDetailModal({ cashRegisterId, onClose }: { cashRegisterId: numbe
         </div>
       </div>
     </div>
+  );
+}
+
+const BUSINESS_TZ = "America/Argentina/Buenos_Aires";
+
+/**
+ * Junta las cajas por día (hora argentina) para ver el total de la jornada aunque haya habido
+ * más de una caja. Cada caja se cuenta en el día en que se abrió.
+ */
+function DaySummary({ registers }: { registers: RegisterSummary[] }) {
+  type Row = { count: number; total: number };
+  const days = new Map<string, { registers: number; efectivo: Row; transferencia: Row; tarjeta: Row; total: number; count: number }>();
+
+  for (const r of registers) {
+    // "en-CA" da AAAA-MM-DD, que ordena bien como texto.
+    const key = new Date(r.opened_at).toLocaleDateString("en-CA", { timeZone: BUSINESS_TZ });
+    const d = days.get(key) ?? {
+      registers: 0,
+      efectivo: { count: 0, total: 0 },
+      transferencia: { count: 0, total: 0 },
+      tarjeta: { count: 0, total: 0 },
+      total: 0,
+      count: 0,
+    };
+    d.registers += 1;
+    for (const m of ["efectivo", "transferencia", "tarjeta"] as const) {
+      d[m].count += r.summary[m].count;
+      d[m].total += r.summary[m].total;
+    }
+    d.total += r.summary.total;
+    d.count += r.summary.count;
+    days.set(key, d);
+  }
+
+  const rows = [...days.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 7);
+  const colors = {
+    efectivo: "bg-green-50 text-green-700",
+    transferencia: "bg-blue-50 text-blue-700",
+    tarjeta: "bg-brand-50 text-brand",
+  };
+  const labels = { efectivo: "Efectivo", transferencia: "Transfer", tarjeta: "Tarjeta" };
+
+  return (
+    <section className="mb-6">
+      <h2 className="mb-1 text-sm font-semibold text-ink">Resumen por día</h2>
+      <p className="mb-3 text-xs text-muted">Suma todas las cajas del mismo día. Cada caja se cuenta en el día en que se abrió.</p>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {rows.map(([key, d]) => (
+          <Card key={key}>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold text-ink">
+                {(() => {
+                  const l = new Date(`${key}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" });
+                  return l.charAt(0).toUpperCase() + l.slice(1);
+                })()}
+              </p>
+              <span className="text-[11px] text-muted">{d.registers} {d.registers === 1 ? "caja" : "cajas"}</span>
+            </div>
+            <p className="mt-1 text-lg font-semibold text-ink">{formatPrice(d.total)}</p>
+            <p className="text-[11px] text-muted">{d.count} {d.count === 1 ? "venta" : "ventas"}</p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {(["efectivo", "transferencia", "tarjeta"] as const).map((m) => (
+                <div key={m} className={`rounded-lg px-2 py-1.5 ${colors[m]}`}>
+                  <p className="text-[10px] font-medium opacity-80">{labels[m]}</p>
+                  <p className="text-xs font-semibold">{formatPrice(d[m].total)}</p>
+                  <p className="text-[10px] opacity-70">{d[m].count}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </section>
   );
 }
