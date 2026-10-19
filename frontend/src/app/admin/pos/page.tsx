@@ -160,7 +160,7 @@ export default function AdminPOS() {
   }, []);
 
   // ── cash register ──
-  const { data: cashReg, isLoading: regLoading } = useQuery<CashRegister | null>({
+  const { data: cashReg, isLoading: regLoading, isError: regError, refetch: refetchReg } = useQuery<CashRegister | null>({
     queryKey: ["pos", "cash-register"],
     queryFn:  () => adminApiFetch("/pos/cash-register/current"),
     refetchOnWindowFocus: true,
@@ -171,6 +171,14 @@ export default function AdminPOS() {
   const [skipCaja, setSkipCaja] = useState(() =>
     typeof window !== "undefined" && sessionStorage.getItem("pos-skip-caja") === "1"
   );
+
+  // ── caja que se abrió y cerró HOY: al abrir de nuevo se la continúa (una sola caja por día) ──
+  const { data: closedToday } = useQuery<{ closed_at: string; summary: CashRegister["summary"] } | null>({
+    queryKey: ["pos", "cash-register", "last-closed"],
+    queryFn: () => adminApiFetch("/pos/cash-register/last-closed"),
+    enabled: !regLoading && !cashReg && !skipCaja,
+    staleTime: 10_000,
+  });
 
   // Al omitir la caja igual se abre una sesión en $0 "por detrás" (sin pedirle
   // nada al usuario) para que las ventas queden en el Historial de cajas.
@@ -190,6 +198,7 @@ export default function AdminPOS() {
 
   // Cierra sola la sesión en $0 (sin pedir conteo de efectivo) y vuelve a la pantalla inicial.
   async function handleEndSession() {
+    if (!window.confirm("¿Finalizar la jornada? Se cierra la sesión de caja de hoy.")) return;
     try {
       if (cashReg) {
         const expected = cashReg.opening_amount + cashReg.summary.efectivo.total;
@@ -434,27 +443,86 @@ export default function AdminPOS() {
     setPayMode("efectivo");
   }
 
+  // ── borrador del ticket ──
+  // El ticket vivía solo en la memoria de la pantalla: cambiar de módulo, recargar, cerrar la
+  // pestaña, o que el navegador descarte una pestaña inactiva (común en notebooks con poca RAM),
+  // lo dejaba todo en 0 de golpe. Se guarda en el navegador y se recupera al volver.
+  const DRAFT_KEY = "pos-ticket-draft";
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(0);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        const fresh = typeof d?.savedAt === "number" && Date.now() - d.savedAt < 12 * 60 * 60 * 1000;
+        if (d?.v === 1 && fresh && Array.isArray(d.ticket) && d.ticket.length > 0) {
+          setTicket(d.ticket);
+          if (d.payMode === "efectivo" || d.payMode === "transferencia" || d.payMode === "tarjeta") setPayMode(d.payMode);
+          if (d.appliedCoupon) { setAppliedCoupon(d.appliedCoupon); setCouponInput(d.appliedCoupon.code ?? ""); }
+          if (d.linkedCustomer) setLinkedCustomer(d.linkedCustomer);
+          if (typeof d.customerEmail === "string") setCustomerEmail(d.customerEmail);
+          setDraftRestored(d.ticket.length);
+        } else {
+          localStorage.removeItem(DRAFT_KEY);
+        }
+      }
+    } catch {
+      /* sin almacenamiento disponible: el ticket funciona igual, solo que no se recupera */
+    }
+    setDraftReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    try {
+      // Con la venta ya confirmada (pantalla de éxito) el borrador se descarta: si no, una
+      // recarga justo ahí lo recuperaría como un ticket sin cobrar y se vendería dos veces.
+      if (ticket.length === 0 || saleSuccess) { localStorage.removeItem(DRAFT_KEY); return; }
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ v: 1, savedAt: Date.now(), ticket, payMode, appliedCoupon, linkedCustomer, customerEmail }),
+      );
+    } catch {
+      /* idem */
+    }
+  }, [draftReady, ticket, payMode, appliedCoupon, linkedCustomer, customerEmail, saleSuccess]);
+
+  // Aviso nativo del navegador si se intenta cerrar o recargar con un ticket a medio armar.
+  useEffect(() => {
+    if (ticket.length === 0) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [ticket.length]);
+
   // ── open / close cash register ──
   const [openAmount, setOpenAmount]       = useState(0);
-  const [closeAmount, setCloseAmount]     = useState(0);
+  // Vacío = todavía no se ingresó el conteo. Hay que escribirlo o tildar "cerrar sin contar":
+  // antes arrancaba en 0 y se podía cerrar con un clic, dejando "contado $0" y una diferencia enorme.
+  const [closeAmount, setCloseAmount]     = useState("");
+  const [closeSinContar, setCloseSinContar] = useState(false);
   const [closeNotes,  setCloseNotes]      = useState("");
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [closeSummary, setCloseSummary]   = useState<null | { summary: CashRegister["summary"]; expected: number; diff: number; closing_amount: number }>(null);
+  const [closeSummary, setCloseSummary]   = useState<null | { summary: CashRegister["summary"]; expected: number; diff: number | null; closing_amount: number | null }>(null);
 
+  const [openError, setOpenError] = useState("");
   const openCaja = useMutation({
     mutationFn: () =>
       adminApiFetch("/pos/cash-register/open", {
         method: "POST",
         body: JSON.stringify({ opening_amount: openAmount }),
       }),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["pos", "cash-register"] }); setOpenAmount(0); },
+    onSuccess: () => { setOpenError(""); void qc.invalidateQueries({ queryKey: ["pos", "cash-register"] }); setOpenAmount(0); },
+    onError: (e: Error) => setOpenError(e.message || "No se pudo abrir la caja. Probá de nuevo."),
   });
 
   const closeCaja = useMutation({
     mutationFn: () =>
-      adminApiFetch<{ summary: CashRegister["summary"]; expected: number; diff: number; closing_amount: number }>(
+      adminApiFetch<{ summary: CashRegister["summary"]; expected: number; diff: number | null; closing_amount: number | null }>(
         "/pos/cash-register/close",
-        { method: "POST", body: JSON.stringify({ closing_amount: closeAmount, notes: closeNotes }) }
+        { method: "POST", body: JSON.stringify({ closing_amount: closeSinContar || closeAmount === "" ? null : Math.round(Number(closeAmount)), notes: closeNotes }) }
       ),
     onSuccess: (res) => {
       setCloseSummary(res);
@@ -604,6 +672,28 @@ export default function AdminPOS() {
     );
   }
 
+  // Falló la CONSULTA de la caja (conexión o servidor): no es lo mismo que "no hay caja abierta".
+  // Mostrar "Apertura de caja" acá hacía creer que la caja se había cerrado sola.
+  if (!cashReg && !skipCaja && regError) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 text-center">
+        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-amber-50">
+          <WifiOff className="h-8 w-8 text-amber-600" />
+        </div>
+        <div>
+          <h2 className="font-display text-2xl text-ink">No pudimos consultar la caja</h2>
+          <p className="mt-1 max-w-sm text-sm text-body">
+            Hubo un problema de conexión con el servidor. Esto <strong>no significa que la caja se haya cerrado</strong>:
+            solo no pudimos ver su estado. Reintentá antes de abrir otra.
+          </p>
+        </div>
+        <button onClick={() => void refetchReg()} className="btn-brand flex items-center gap-2 px-6 py-2.5">
+          <RefreshCw className="h-4 w-4" /> Reintentar
+        </button>
+      </div>
+    );
+  }
+
   if (!cashReg && !skipCaja) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-6 text-center">
@@ -612,8 +702,18 @@ export default function AdminPOS() {
         </div>
         <div>
           <h2 className="font-display text-2xl text-ink">Apertura de caja</h2>
-          <p className="mt-1 max-w-xs text-sm text-body">Ingresá el efectivo inicial para comenzar la jornada.</p>
+          <p className="mt-1 max-w-xs text-sm text-body">
+            {closedToday ? "Ingresá el efectivo que hay ahora en el cajón." : "Ingresá el efectivo inicial para comenzar la jornada."}
+          </p>
         </div>
+        {closedToday && (
+          <div className="w-full max-w-xs rounded-xl bg-amber-50 px-4 py-3 text-left text-xs text-amber-800">
+            Hoy ya cerraste una caja a las{" "}
+            <strong>{new Date(closedToday.closed_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</strong>{" "}
+            ({closedToday.summary.count} {closedToday.summary.count === 1 ? "venta" : "ventas"} · {formatPrice(closedToday.summary.total)}).
+            Al abrir de nuevo se <strong>continúa esa misma caja</strong>: no se crea otra.
+          </div>
+        )}
         <div className="w-full max-w-xs">
           <label className="mb-1.5 block text-xs font-medium text-ink">Efectivo en cajón (pesos)</label>
           <div className="flex items-center gap-1.5 rounded-xl border border-line px-4 py-2.5">
@@ -636,8 +736,9 @@ export default function AdminPOS() {
           className="btn-brand flex w-full max-w-xs items-center justify-center gap-2 py-2.5"
         >
           {openCaja.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Banknote className="h-4 w-4" />}
-          Abrir caja {openAmount > 0 && `· ${formatPrice(openAmount)}`}
+          {closedToday ? "Continuar la caja de hoy" : "Abrir caja"} {openAmount > 0 && `· ${formatPrice(openAmount)}`}
         </button>
+        {openError && <p className="max-w-xs text-xs text-red-500">{openError}</p>}
         <div className="flex w-full max-w-xs flex-col items-center gap-3">
           <div className="flex w-full items-center gap-3">
             <div className="h-px flex-1 bg-line" />
@@ -678,6 +779,19 @@ export default function AdminPOS() {
           <RefreshCw className="h-4 w-4 shrink-0 text-green-700" />
           <p className="text-xs text-green-800">{syncCount} {syncCount === 1 ? "venta sincronizada" : "ventas sincronizadas"} con el servidor.</p>
           <button onClick={() => setSyncCount(0)} className="ml-auto text-green-600 hover:text-green-800"><X className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
+
+      {draftRestored > 0 && ticket.length > 0 && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <RefreshCw className="h-4 w-4 shrink-0 text-amber-700" />
+          <p className="text-xs text-amber-900">
+            Recuperamos el ticket que estabas armando ({draftRestored} {draftRestored === 1 ? "producto" : "productos"}). Revisalo antes de cobrar.
+          </p>
+          <button onClick={() => { afterSale(); setDraftRestored(0); }} className="ml-auto text-xs font-medium text-amber-800 underline">
+            Descartar
+          </button>
+          <button onClick={() => setDraftRestored(0)} aria-label="Cerrar"><X className="h-3.5 w-3.5 text-amber-700" /></button>
         </div>
       )}
 
@@ -962,7 +1076,7 @@ export default function AdminPOS() {
             <div className="mt-4 border-t border-line pt-4">
               <button
                 onClick={() => cashReg && !skipCaja ? setShowCloseModal(true) : handleEndSession()}
-                className="w-full rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-medium text-red-600 hover:bg-red-100"
+                className="w-full rounded-xl border border-line py-2.5 text-xs font-medium text-muted transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
               >
                 {cashReg && !skipCaja ? "Cerrar caja" : "Finalizar jornada"}
               </button>
@@ -1124,18 +1238,44 @@ export default function AdminPOS() {
               <h3 className="font-display text-lg text-ink">Cerrar caja</h3>
               <button onClick={() => setShowCloseModal(false)}><X className="h-4 w-4 text-muted" /></button>
             </div>
-            <p className="mb-4 text-sm text-body">Contá el efectivo en cajón y registrá el total.</p>
-            <label className="mb-1 block text-xs font-medium text-ink">Efectivo físico contado (pesos)</label>
-            <div className="mb-3 flex items-center gap-1.5 rounded-xl border border-line px-4 py-2.5 focus-within:border-brand">
+            <div className="mb-3 rounded-xl bg-stone-50 p-3 text-xs text-body">
+              <p>
+                Caja abierta desde las{" "}
+                <strong>{cashReg ? new Date(cashReg.opened_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</strong>
+                {" "}· {cashReg?.summary.count ?? 0} ventas · {formatPrice(cashReg?.summary.total ?? 0)}
+              </p>
+              <p className="mt-1">
+                Efectivo esperado en el cajón:{" "}
+                <strong>{formatPrice((cashReg?.opening_amount ?? 0) + (cashReg?.summary.efectivo.total ?? 0))}</strong>
+              </p>
+            </div>
+            <p className="mb-3 text-xs text-muted">
+              Cerrá la caja al terminar el día. Si hoy la volvés a abrir, se sigue en esta misma caja.
+            </p>
+            <label className="mb-1 block text-xs font-medium text-ink">
+              Efectivo físico contado (pesos) <span className="text-brand">*</span>
+            </label>
+            <div className={`mb-2 flex items-center gap-1.5 rounded-xl border border-line px-4 py-2.5 focus-within:border-brand ${closeSinContar ? "opacity-50" : ""}`}>
               <span className="text-sm text-muted">$</span>
               <input
-                type="number" min="0" step="100"
-                value={closeAmount || ""}
-                onChange={e => setCloseAmount(Number(e.target.value))}
+                type="number" min="0" step="100" inputMode="numeric"
+                value={closeAmount}
+                disabled={closeSinContar}
+                onChange={e => setCloseAmount(e.target.value)}
+                placeholder="0"
                 className="flex-1 bg-transparent text-right text-sm outline-none"
                 autoFocus
               />
             </div>
+            <label className="mb-3 flex items-center gap-2 text-xs text-body">
+              <input
+                type="checkbox"
+                checked={closeSinContar}
+                onChange={e => setCloseSinContar(e.target.checked)}
+                className="h-4 w-4 accent-brand"
+              />
+              Cerrar sin contar el efectivo
+            </label>
             <label className="mb-1 block text-xs font-medium text-ink">Observaciones <span className="font-normal text-muted">(opcional)</span></label>
             <textarea
               value={closeNotes}
@@ -1144,13 +1284,16 @@ export default function AdminPOS() {
               placeholder="Diferencias, novedades…"
               className="mb-4 w-full resize-none rounded-xl border border-line px-3.5 py-2.5 text-sm outline-none focus:border-brand"
             />
+            {closeCaja.isError && (
+              <p className="mb-3 text-xs text-red-500">{(closeCaja.error as Error).message || "No se pudo cerrar la caja. Probá de nuevo."}</p>
+            )}
             <div className="flex gap-2">
               <button onClick={() => setShowCloseModal(false)} className="flex-1 rounded-xl border border-line py-2.5 text-sm text-ink hover:border-brand">
                 Cancelar
               </button>
               <button
                 onClick={() => closeCaja.mutate()}
-                disabled={closeCaja.isPending}
+                disabled={closeCaja.isPending || (!closeSinContar && closeAmount === "")}
                 className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
               >
                 {closeCaja.isPending ? <Loader2 className="inline h-4 w-4 animate-spin" /> : "Cerrar caja"}
@@ -1182,15 +1325,17 @@ export default function AdminPOS() {
               </div>
               <div className="rounded-xl bg-stone-50 p-3 space-y-1 text-xs">
                 <div className="flex justify-between"><span className="text-body">Efectivo esperado</span><span className="font-medium">{formatPrice(closeSummary.expected)}</span></div>
-                <div className="flex justify-between"><span className="text-body">Efectivo contado</span><span className="font-medium">{formatPrice(closeSummary.closing_amount)}</span></div>
-                <div className={`flex justify-between font-semibold ${closeSummary.diff < 0 ? "text-red-600" : closeSummary.diff > 0 ? "text-amber-700" : "text-green-600"}`}>
-                  <span>Diferencia</span>
-                  <span>{closeSummary.diff >= 0 ? "+" : ""}{formatPrice(closeSummary.diff)}</span>
-                </div>
+                <div className="flex justify-between"><span className="text-body">Efectivo contado</span><span className="font-medium">{closeSummary.closing_amount != null ? formatPrice(closeSummary.closing_amount) : "Sin conteo"}</span></div>
+                {closeSummary.diff != null && (
+                  <div className={`flex justify-between font-semibold ${closeSummary.diff < 0 ? "text-red-600" : closeSummary.diff > 0 ? "text-amber-700" : "text-green-600"}`}>
+                    <span>Diferencia</span>
+                    <span>{closeSummary.diff >= 0 ? "+" : ""}{formatPrice(closeSummary.diff)}</span>
+                  </div>
+                )}
               </div>
             </div>
             <button
-              onClick={() => { setCloseSummary(null); setShowCloseModal(false); setCloseAmount(0); setCloseNotes(""); void qc.invalidateQueries({ queryKey: ["pos", "cash-register"] }); }}
+              onClick={() => { setCloseSummary(null); setShowCloseModal(false); setCloseAmount(""); setCloseSinContar(false); setCloseNotes(""); void qc.invalidateQueries({ queryKey: ["pos", "cash-register"] }); }}
               className="mt-5 w-full btn-brand py-2.5 text-sm"
             >
               Aceptar
