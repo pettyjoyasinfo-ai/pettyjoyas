@@ -24,7 +24,7 @@ class CashRegisterController extends Controller
             // 200 con null (antes 204): así el frontend distingue "no hay caja abierta" de
             // "falló la consulta". Un error de red o del servidor no debe mostrar la pantalla
             // de apertura como si la caja se hubiera cerrado sola.
-            return response()->json(null);
+            return $this->jsonNull();
         }
 
         return response()->json($this->format($register));
@@ -50,7 +50,18 @@ class CashRegisterController extends Controller
     {
         $register = CashRegister::closedToday();
 
-        return response()->json($register ? $this->format($register->load(['openedBy', 'closedBy'])) : null);
+        return $register
+            ? response()->json($this->format($register->load(['openedBy', 'closedBy'])))
+            : $this->jsonNull();
+    }
+
+    /**
+     * Respuesta JSON "null". OJO: response()->json(null) devuelve `{}` (un objeto vacío), que el
+     * frontend tomaría como una caja existente; hay que mandar el literal null.
+     */
+    private function jsonNull(): JsonResponse
+    {
+        return JsonResponse::fromJsonString('null');
     }
 
     /** POST /pos/cash-register/open — abre una nueva caja (o continúa la que se cerró hoy). */

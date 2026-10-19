@@ -162,7 +162,11 @@ export default function AdminPOS() {
   // ── cash register ──
   const { data: cashReg, isLoading: regLoading, isError: regError, refetch: refetchReg } = useQuery<CashRegister | null>({
     queryKey: ["pos", "cash-register"],
-    queryFn:  () => adminApiFetch("/pos/cash-register/current"),
+    queryFn:  async () => {
+      const r = await adminApiFetch<CashRegister | null>("/pos/cash-register/current");
+      // Sin caja abierta el servidor manda null; un objeto vacío tampoco cuenta como caja.
+      return r && r.id ? r : null;
+    },
     refetchOnWindowFocus: true,
     staleTime: 10_000,
   });
@@ -175,7 +179,10 @@ export default function AdminPOS() {
   // ── caja que se abrió y cerró HOY: al abrir de nuevo se la continúa (una sola caja por día) ──
   const { data: closedToday } = useQuery<{ closed_at: string; summary: CashRegister["summary"] } | null>({
     queryKey: ["pos", "cash-register", "last-closed"],
-    queryFn: () => adminApiFetch("/pos/cash-register/last-closed"),
+    queryFn: async () => {
+      const r = await adminApiFetch<{ id?: number; closed_at: string; summary: CashRegister["summary"] } | null>("/pos/cash-register/last-closed");
+      return r && r.id ? r : null;
+    },
     enabled: !regLoading && !cashReg && !skipCaja,
     staleTime: 10_000,
   });
