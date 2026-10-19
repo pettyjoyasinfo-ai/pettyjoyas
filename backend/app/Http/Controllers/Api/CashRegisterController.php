@@ -152,6 +152,51 @@ class CashRegisterController extends Controller
         return response()->json($registers);
     }
 
+    /**
+     * GET /pos/cash-register/days?dias=7 — ventas del POS por DÍA argentino, sumadas desde los
+     * pedidos (no desde las cajas): una caja que cruza la medianoche o que sigue abierta de un
+     * día para otro no mezcla las ventas de un día con las del siguiente.
+     */
+    public function days(Request $request): JsonResponse
+    {
+        $dias = min(31, max(1, (int) $request->query('dias', 7)));
+        $from = now(CashRegister::TZ)->startOfDay()->subDays($dias - 1)->setTimezone(config('app.timezone'));
+
+        // Argentina no usa horario de verano: el desfase con UTC es siempre de 3 horas.
+        $rows = Order::query()
+            ->where('channel', 'local')
+            ->whereIn('status', ['pagado', 'entregado'])
+            ->where('created_at', '>=', $from)
+            ->selectRaw('DATE(DATE_SUB(created_at, INTERVAL 3 HOUR)) as dia, payment_method, COUNT(*) as cnt, SUM(total) as total')
+            ->groupBy('dia', 'payment_method')
+            ->get();
+
+        $registers = CashRegister::query()
+            ->where('opened_at', '>=', $from)
+            ->get(['opened_at'])
+            ->groupBy(fn (CashRegister $r) => $r->opened_at->copy()->setTimezone(CashRegister::TZ)->toDateString())
+            ->map->count();
+
+        $empty = fn () => ['count' => 0, 'total' => 0];
+        $out = [];
+        foreach ($rows as $r) {
+            $d = $out[$r->dia] ??= [
+                'date' => $r->dia, 'count' => 0, 'total' => 0, 'registers' => (int) ($registers[$r->dia] ?? 0),
+                'efectivo' => $empty(), 'transferencia' => $empty(), 'tarjeta' => $empty(),
+            ];
+            $d['count'] += (int) $r->cnt;
+            $d['total'] += (int) $r->total;
+            if (isset($d[$r->payment_method]) && is_array($d[$r->payment_method])) {
+                $d[$r->payment_method]['count'] += (int) $r->cnt;
+                $d[$r->payment_method]['total'] += (int) $r->total;
+            }
+            $out[$r->dia] = $d;
+        }
+        krsort($out);
+
+        return response()->json(array_values($out));
+    }
+
     /** GET /pos/cash-register/{cashRegister}/sales — detalle de todas las ventas de una sesión de caja. */
     public function sales(CashRegister $cashRegister): JsonResponse
     {

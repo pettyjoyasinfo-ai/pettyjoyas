@@ -75,7 +75,7 @@ export default function PosHistorialPage() {
         }
       />
 
-      {!isLoading && registers.length > 0 && <DaySummary registers={registers} />}
+      <DaySummary />
 
       {isLoading ? (
         <div className="py-16 text-center text-sm text-muted">Cargando historial…</div>
@@ -237,38 +237,28 @@ function SessionDetailModal({ cashRegisterId, onClose }: { cashRegisterId: numbe
   );
 }
 
-const BUSINESS_TZ = "America/Argentina/Buenos_Aires";
+type DayRow = {
+  date: string;
+  count: number;
+  total: number;
+  registers: number;
+  efectivo: { count: number; total: number };
+  transferencia: { count: number; total: number };
+  tarjeta: { count: number; total: number };
+};
 
 /**
- * Junta las cajas por día (hora argentina) para ver el total de la jornada aunque haya habido
- * más de una caja. Cada caja se cuenta en el día en que se abrió.
+ * Total de cada día (hora argentina), sumado desde los pedidos del POS: junta todas las cajas
+ * del día y no mezcla un día con otro aunque una caja haya quedado abierta de un día para el otro.
  */
-function DaySummary({ registers }: { registers: RegisterSummary[] }) {
-  type Row = { count: number; total: number };
-  const days = new Map<string, { registers: number; efectivo: Row; transferencia: Row; tarjeta: Row; total: number; count: number }>();
+function DaySummary() {
+  const { data: rows = [] } = useQuery<DayRow[]>({
+    queryKey: ["pos", "cash-register", "days"],
+    queryFn: () => adminApiFetch("/pos/cash-register/days?dias=7"),
+    staleTime: 30_000,
+  });
+  if (rows.length === 0) return null;
 
-  for (const r of registers) {
-    // "en-CA" da AAAA-MM-DD, que ordena bien como texto.
-    const key = new Date(r.opened_at).toLocaleDateString("en-CA", { timeZone: BUSINESS_TZ });
-    const d = days.get(key) ?? {
-      registers: 0,
-      efectivo: { count: 0, total: 0 },
-      transferencia: { count: 0, total: 0 },
-      tarjeta: { count: 0, total: 0 },
-      total: 0,
-      count: 0,
-    };
-    d.registers += 1;
-    for (const m of ["efectivo", "transferencia", "tarjeta"] as const) {
-      d[m].count += r.summary[m].count;
-      d[m].total += r.summary[m].total;
-    }
-    d.total += r.summary.total;
-    d.count += r.summary.count;
-    days.set(key, d);
-  }
-
-  const rows = [...days.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1)).slice(0, 7);
   const colors = {
     efectivo: "bg-green-50 text-green-700",
     transferencia: "bg-blue-50 text-blue-700",
@@ -279,18 +269,22 @@ function DaySummary({ registers }: { registers: RegisterSummary[] }) {
   return (
     <section className="mb-6">
       <h2 className="mb-1 text-sm font-semibold text-ink">Resumen por día</h2>
-      <p className="mb-3 text-xs text-muted">Suma todas las cajas del mismo día. Cada caja se cuenta en el día en que se abrió.</p>
+      <p className="mb-3 text-xs text-muted">
+        Suma todas las ventas del POS de cada día (hora argentina), aunque se hayan hecho en varias cajas.
+      </p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map(([key, d]) => (
-          <Card key={key}>
+        {rows.map((d) => (
+          <Card key={d.date}>
             <div className="flex items-baseline justify-between gap-2">
               <p className="text-sm font-semibold text-ink">
                 {(() => {
-                  const l = new Date(`${key}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" });
+                  const l = new Date(`${d.date}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" });
                   return l.charAt(0).toUpperCase() + l.slice(1);
                 })()}
               </p>
-              <span className="text-[11px] text-muted">{d.registers} {d.registers === 1 ? "caja" : "cajas"}</span>
+              <span className="text-[11px] text-muted">
+                {d.registers > 0 ? `${d.registers} ${d.registers === 1 ? "caja abierta" : "cajas abiertas"}` : "caja del día anterior"}
+              </span>
             </div>
             <p className="mt-1 text-lg font-semibold text-ink">{formatPrice(d.total)}</p>
             <p className="text-[11px] text-muted">{d.count} {d.count === 1 ? "venta" : "ventas"}</p>
