@@ -5,6 +5,7 @@ namespace App\Services\Inventory;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -71,6 +72,54 @@ class InventoryService
         }
 
         return $result;
+    }
+
+    /**
+     * Disponibilidad de MUCHOS productos de una vez. Da lo mismo que llamar stockByVariant() /
+     * currentStock() por cada producto, pero con una sola consulta de reservas en total: el
+     * listado completo del panel (~1.900 productos) hacía más de 6.000 consultas por pedido y
+     * saturaba el hosting compartido.
+     *
+     * @param  Collection<int, Product>  $products  con la relación `variants` ya cargada
+     * @return array<int, array{total: int, byVariant: array<int, int>}>  indexado por id de producto
+     */
+    public function availabilityFor(Collection $products): array
+    {
+        if ($products->isEmpty()) {
+            return [];
+        }
+
+        $rows = CartItem::query()
+            ->whereIn('cart_items.product_id', $products->pluck('id'))
+            ->where('cart_items.reserved_until', '>', now())
+            ->groupBy('cart_items.product_id', 'cart_items.product_variant_id')
+            ->select('cart_items.product_id', 'cart_items.product_variant_id', DB::raw('SUM(cart_items.quantity) as qty'))
+            ->get();
+
+        $reservedByProduct = []; // todas las reservas del producto (aplica al producto simple)
+        $reservedByVariant = [];
+        foreach ($rows as $row) {
+            $qty = (int) $row->qty;
+            $reservedByProduct[$row->product_id] = ($reservedByProduct[$row->product_id] ?? 0) + $qty;
+            if ($row->product_variant_id) {
+                $reservedByVariant[$row->product_variant_id] = $qty;
+            }
+        }
+
+        $out = [];
+        foreach ($products as $p) {
+            if ($p->variants->isNotEmpty()) {
+                $by = [];
+                foreach ($p->variants as $v) {
+                    $by[$v->id] = max(0, (int) $v->stock - ($reservedByVariant[$v->id] ?? 0));
+                }
+                $out[$p->id] = ['total' => array_sum($by), 'byVariant' => $by];
+            } else {
+                $out[$p->id] = ['total' => max(0, (int) $p->stock - ($reservedByProduct[$p->id] ?? 0)), 'byVariant' => []];
+            }
+        }
+
+        return $out;
     }
 
     /** Mapa de stock por producto para una lista de ids (evita N+1). Sin reservas. */

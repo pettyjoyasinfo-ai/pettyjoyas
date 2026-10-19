@@ -89,7 +89,8 @@ class ProductController extends Controller
         if ($request->filled('page')) {
             $perPage = min(60, max(1, (int) $request->query('per_page', 24)));
             $paginator = $query->paginate($perPage)->withQueryString();
-            $items = collect($paginator->items())->each(fn (Product $p) => $this->attachStock($p));
+            $items = collect($paginator->items());
+            $this->attachStockBatch($items);
             $this->discounts->decorate($items, $request->query('promo'));
 
             return ProductResource::collection($items)->additional([
@@ -110,7 +111,8 @@ class ProductController extends Controller
             $query->limit(min(100, max(1, (int) $request->query('limit'))));
         }
 
-        $products = $query->get()->each(fn (Product $p) => $this->attachStock($p));
+        $products = $query->get();
+        $this->attachStockBatch($products);
         $this->discounts->decorate($products, $request->query('promo'));
 
         return ProductResource::collection($products);
@@ -282,6 +284,23 @@ class ProductController extends Controller
                     $q2->whereDoesntHave('variants')->where('stock', '>', 0);
                 });
         });
+    }
+
+    /**
+     * Igual que attachStock() pero para muchos productos a la vez: una consulta de reservas en
+     * total en vez de 2-4 por producto (el listado del panel hacía 6.000+ consultas por pedido).
+     */
+    private function attachStockBatch(\Illuminate\Support\Collection $products): void
+    {
+        $availability = $this->inventory->availabilityFor($products);
+
+        foreach ($products as $product) {
+            $a = $availability[$product->id];
+            $product->stock_total = $a['total'];
+            $product->variants->each(function ($variant) use ($a) {
+                $variant->stock = $a['byVariant'][$variant->id] ?? 0;
+            });
+        }
     }
 
     /** Inyecta stock disponible (columna directa menos reservas de carrito) en el modelo. */
