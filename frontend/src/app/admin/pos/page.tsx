@@ -138,6 +138,19 @@ function doPrint(items: TicketItem[], subtotal: number, discount: number, total:
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
+const BUSINESS_TZ = "America/Argentina/Buenos_Aires";
+
+/** Día argentino (AAAA-MM-DD) de una fecha: para saber si una caja es de hoy o de un día anterior. */
+const dayKey = (d: string | Date) => new Date(d).toLocaleDateString("en-CA", { timeZone: BUSINESS_TZ });
+
+/** "las 21:14" si es de hoy; "el sábado, 17/10 a las 21:14" si es de otro día. */
+function openedLabel(iso: string) {
+  const time = new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: BUSINESS_TZ });
+  if (dayKey(iso) === dayKey(new Date())) return `las ${time}`;
+  const d = new Date(iso).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "2-digit", timeZone: BUSINESS_TZ });
+  return `el ${d} a las ${time}`;
+}
+
 export default function AdminPOS() {
   const qc = useQueryClient();
   const router = useRouter();
@@ -175,6 +188,11 @@ export default function AdminPOS() {
   const [skipCaja, setSkipCaja] = useState(() =>
     typeof window !== "undefined" && sessionStorage.getItem("pos-skip-caja") === "1"
   );
+
+  // Caja abierta de un día anterior (ej. quedó abierta la sesión "sin caja" del sábado): sin este
+  // aviso el POS entra directo con esa caja y nunca pide el efectivo inicial del día.
+  const [staleDismissed, setStaleDismissed] = useState(false);
+  const staleCaja = !!cashReg && dayKey(cashReg.opened_at) !== dayKey(new Date());
 
   // ── caja que se abrió y cerró HOY: al abrir de nuevo se la continúa (una sola caja por día) ──
   const { data: closedToday } = useQuery<{ closed_at: string; summary: CashRegister["summary"] } | null>({
@@ -789,6 +807,28 @@ export default function AdminPOS() {
         </div>
       )}
 
+      {staleCaja && !staleDismissed && cashReg && (
+        <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-medium text-amber-900">
+            Esta caja se abrió {openedLabel(cashReg.opened_at)} y sigue abierta.
+          </p>
+          <p className="mt-0.5 text-xs text-amber-800">
+            Para empezar el día con el efectivo inicial, cerrala y abrí una caja nueva. Las ventas ya hechas quedan registradas igual.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button onClick={() => setShowCloseModal(true)} className="btn-brand px-4 py-1.5 text-xs">
+              Cerrar esta caja y abrir la de hoy
+            </button>
+            <button
+              onClick={() => setStaleDismissed(true)}
+              className="rounded-xl border border-amber-300 px-4 py-1.5 text-xs text-amber-900 hover:bg-amber-100"
+            >
+              Seguir con esta caja
+            </button>
+          </div>
+        </div>
+      )}
+
       {draftRestored > 0 && ticket.length > 0 && (
         <div className="mb-4 flex items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
           <RefreshCw className="h-4 w-4 shrink-0 text-amber-700" />
@@ -805,7 +845,7 @@ export default function AdminPOS() {
       <PageHeader
         title="Venta presencial"
         description={cashReg && !skipCaja
-          ? `Caja abierta por ${cashReg.opened_by} — ${new Date(cashReg.opened_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
+          ? `Caja abierta por ${cashReg.opened_by} desde ${openedLabel(cashReg.opened_at)}`
           : "Sin caja abierta"
         }
         action={
@@ -1247,8 +1287,8 @@ export default function AdminPOS() {
             </div>
             <div className="mb-3 rounded-xl bg-stone-50 p-3 text-xs text-body">
               <p>
-                Caja abierta desde las{" "}
-                <strong>{cashReg ? new Date(cashReg.opened_at).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "—"}</strong>
+                Caja abierta desde{" "}
+                <strong>{cashReg ? openedLabel(cashReg.opened_at) : "—"}</strong>
                 {" "}· {cashReg?.summary.count ?? 0} ventas · {formatPrice(cashReg?.summary.total ?? 0)}
               </p>
               <p className="mt-1">
