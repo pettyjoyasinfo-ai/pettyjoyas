@@ -52,9 +52,13 @@ class CreateSaleAction
             }
 
             // Descuento por transferencia (config de /admin/configuracion), sobre
-            // el subtotal ya con el cupón aplicado. Separado del cupón para no
-            // inflar el monto registrado en CouponRedemption más abajo.
-            $transferDiscount = $this->sales->transferDiscount($paymentMethod, $subtotal - $couponDiscount);
+            // el subtotal ya con el cupón aplicado y sin productos de Oro (que
+            // no llevan este descuento). Separado del cupón para no inflar el
+            // monto registrado en CouponRedemption más abajo.
+            $transferDiscount = $this->sales->transferDiscount(
+                $paymentMethod,
+                $this->sales->transferDiscountBase($lines, $subtotal, $couponDiscount),
+            );
             $discount = $couponDiscount + $transferDiscount;
 
             // Cliente (vínculo por email → historial unificado).

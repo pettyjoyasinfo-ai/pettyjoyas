@@ -187,7 +187,7 @@ export function ProductDetail({ product }: { product: Product }) {
         <div className="mt-5">
           <Price price={unitPrice} compareAtPrice={product.compareAtPrice} size="lg" />
           <p className="mt-1 text-xs text-muted">Precio final, incluye IVA (21%)</p>
-          {transferDiscountPct > 0 && (
+          {transferDiscountPct > 0 && !product.restrictedPayment && (
             <p className="mt-1.5 text-sm font-medium text-brand">
               {formatPrice(transferPrice)} pagando con transferencia ({transferDiscountPct}% off)
             </p>

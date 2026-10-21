@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\Inventory\InventoryService;
@@ -135,6 +136,10 @@ class ProductController extends Controller
 
         $this->attachStock($product);
         $this->discounts->decorate([$product], $request->query('promo'));
+
+        // La ficha oculta el "precio con transferencia" en productos de Oro
+        // (no llevan ese descuento). Solo se calcula acá, no en los listados.
+        $product->restricted_payment = in_array($product->category_id, Category::restrictedPaymentCategoryIds(), true);
 
         return new ProductResource($product);
     }
