@@ -58,6 +58,8 @@ export type Product = {
   compareAtPrice?: number | null;
   /** Nombre de la promo activa (ej. "20% OFF en Aros"), si aplica. */
   discountName?: string | null;
+  /** true si es de una categoría con pago restringido (ej. "Oro"): no lleva descuento por transferencia. Solo viene en la ficha. */
+  restrictedPayment?: boolean;
   images: string[];
   shortDescription: string;
   description: string;

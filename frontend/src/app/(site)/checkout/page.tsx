@@ -103,6 +103,8 @@ export default function CheckoutPage() {
   // Productos de categorías con pago restringido (ej. "Oro"): solo efectivo o
   // transferencia, sin importar si el envío es a domicilio o retiro en local.
   const hasRestrictedPayment = items.some((it) => it.restrictedPayment);
+  // Carrito solo de Oro: el descuento por transferencia no aplica a nada.
+  const allRestrictedPayment = items.length > 0 && items.every((it) => it.restrictedPayment);
 
   // Si el carrito cambia (se agrega/saca un producto de oro) y el método de
   // pago elegido ya no es válido, lo corrige antes de que el cliente intente confirmar.
@@ -369,7 +371,13 @@ export default function CheckoutPage() {
                 onClick={() => setPayment("transferencia")}
                 icon={<Landmark className="h-5 w-5" />}
                 title="Transferencia"
-                desc={`${transferDiscountPct}% extra de descuento`}
+                desc={
+                  allRestrictedPayment
+                    ? "Datos para transferir al confirmar"
+                    : hasRestrictedPayment
+                      ? `${transferDiscountPct}% extra de descuento (excepto Oro)`
+                      : `${transferDiscountPct}% extra de descuento`
+                }
               />
               {(shipping === "retiro" || hasRestrictedPayment) && (
                 <OptionCard

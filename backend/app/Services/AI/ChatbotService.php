@@ -209,7 +209,7 @@ class ChatbotService
 
         Datos del negocio que ya sabés (no hace falta herramienta):
         - Envío a todo el país. Envío gratis desde \$$envioGratis.
-        - Pagos: MercadoPago (tarjeta/débito) y transferencia ({$descTransfer}% extra de descuento).
+        - Pagos: MercadoPago (tarjeta/débito) y transferencia ({$descTransfer}% extra de descuento, excepto en productos de Oro, que nunca llevan descuento).
         - Retiro en el local disponible: Av. Victoria Aguirre 262, N3370 Puerto Iguazú, Misiones. Horario: Lun a Sáb, 9 a 12:30 y 17 a 21:30 h.
         - Sacar eslabones: SÍ sacamos eslabones de relojes/pulseras para ajustar el tamaño, coordinado en el local. Solo mencionalo si el cliente pregunta puntualmente por eso; es el único ajuste que ofrecemos (no hacemos otros arreglos ni diseños a medida).
 

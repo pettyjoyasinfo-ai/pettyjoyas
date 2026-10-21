@@ -101,9 +101,35 @@ class SalesService
     }
 
     /**
+     * Base sobre la que corre el descuento por transferencia: el subtotal ya
+     * con el cupón aplicado, SIN los productos de categorías con pago
+     * restringido (ej. "Oro"), que nunca llevan este descuento. El cupón se
+     * reparte en proporción, igual que en el frontend (cart/totals.ts).
+     *
+     * @param  array<int,array>  $lines  líneas de resolveItems()
+     */
+    public function transferDiscountBase(array $lines, int $subtotal, int $couponDiscount): int
+    {
+        if ($subtotal <= 0) {
+            return 0;
+        }
+
+        $restrictedIds = Category::restrictedPaymentCategoryIds();
+        $eligible = 0;
+        foreach ($lines as $line) {
+            if (! in_array($line['product']->category_id, $restrictedIds, true)) {
+                $eligible += $line['unit_price'] * $line['quantity'];
+            }
+        }
+
+        return (int) round($eligible * ($subtotal - $couponDiscount) / $subtotal);
+    }
+
+    /**
      * Descuento adicional por pagar con transferencia (config de
-     * /admin/configuracion → Métodos de pago). Se calcula sobre el subtotal
-     * ya con el cupón aplicado, para no descontar dos veces sobre el bruto.
+     * /admin/configuracion → Métodos de pago). Se calcula sobre la base que
+     * arma transferDiscountBase() (cupón aplicado y sin productos de Oro),
+     * para no descontar dos veces sobre el bruto.
      */
     public function transferDiscount(?string $paymentMethod, int $subtotalAfterCoupon): int
     {

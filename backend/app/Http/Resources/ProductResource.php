@@ -31,6 +31,9 @@ class ProductResource extends JsonResource
             'price' => $this->effectivePrice(),
             'compareAtPrice' => $this->effectiveCompareAt(),
             'discountName' => $this->onDiscount() ? ($this->discount_name ?? null) : null,
+            // true en productos de categorías con pago restringido (ej. "Oro"):
+            // no llevan descuento por transferencia. Solo lo setea show().
+            'restrictedPayment' => isset($this->restricted_payment) && $this->restricted_payment,
             'images' => $this->images->pluck('url')->all(),
             'shortDescription' => $this->short_description,
             'description' => $this->description,

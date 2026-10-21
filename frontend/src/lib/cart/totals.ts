@@ -52,12 +52,20 @@ export function computeTotals(
   const itemCount = items.reduce((sum, it) => sum + it.quantity, 0);
   const couponDiscountAmount = couponDiscount(coupon, subtotal);
 
-  // Sobre el subtotal ya con el cupón aplicado — igual que el backend
-  // (CreateSaleAction/SalesService::transferDiscount), para que el total
-  // mostrado acá coincida con lo que realmente se cobra.
+  // Sobre el subtotal ya con el cupón aplicado y SIN los productos de Oro
+  // (categorías con pago restringido, que nunca llevan este descuento). El
+  // cupón se reparte en proporción. Igual que el backend (CreateSaleAction/
+  // SalesService::transferDiscountBase), para que el total mostrado acá
+  // coincida con lo que realmente se cobra.
+  const eligibleSubtotal = items.reduce(
+    (sum, it) => (it.restrictedPayment ? sum : sum + it.price * it.quantity),
+    0,
+  );
+  const transferBase =
+    subtotal > 0 ? Math.round((eligibleSubtotal * (subtotal - couponDiscountAmount)) / subtotal) : 0;
   const transferDiscountAmount =
     paymentMethod === "transferencia" && transferDiscountPct > 0
-      ? Math.round((subtotal - couponDiscountAmount) * (transferDiscountPct / 100))
+      ? Math.round(transferBase * (transferDiscountPct / 100))
       : 0;
 
   const discount = couponDiscountAmount + transferDiscountAmount;
