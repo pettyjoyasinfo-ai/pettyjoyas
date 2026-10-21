@@ -38,6 +38,12 @@ class SiteSetting extends Model
                 'mercadopago_enabled'      => true,
                 'transferencia_enabled'    => true,
                 'descuento_transferencia'  => 10,
+                // Datos que ve el cliente al pagar por transferencia. Alias y CBU/CVU
+                // vacíos = se usan los de BANK_ALIAS / BANK_CBU del .env.
+                'transfer_bank'            => 'Lemon',
+                'transfer_holder'          => 'Rodrigo David Larramendia',
+                'transfer_alias'           => '',
+                'transfer_cbu'             => '',
             ],
             // Opciones de envío (importes en centavos para coincidir con el resto del sistema).
             'shipping' => [
@@ -131,7 +137,12 @@ class SiteSetting extends Model
     public static function allWithDefaults(): array
     {
         $stored = static::query()->pluck('value', 'key')->toArray();
+        $all = array_merge(static::defaults(), $stored);
 
-        return array_merge(static::defaults(), $stored);
+        // 'payment' se guardó antes de que existieran los datos de transferencia:
+        // se completa clave por clave para que los nuevos defaults también apliquen.
+        $all['payment'] = array_merge(static::defaults()['payment'], $stored['payment'] ?? []);
+
+        return $all;
     }
 }

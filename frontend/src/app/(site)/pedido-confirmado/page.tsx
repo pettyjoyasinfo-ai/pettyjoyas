@@ -286,19 +286,21 @@ export default function OrderConfirmedPage() {
                   <span className="text-body">Banco</span>
                   <span className="font-medium text-ink">{order.transferInfo.bank}</span>
                 </li>
-                <li className="flex items-center justify-between gap-2">
-                  <span className="text-body">Alias</span>
-                  <button
-                    onClick={() => copyToClipboard(order.transferInfo!.alias, "alias")}
-                    className="flex items-center gap-1.5 font-mono font-medium text-ink hover:text-brand"
-                  >
-                    {order.transferInfo.alias}
-                    <Copy className={`h-3.5 w-3.5 ${copied === "alias" ? "text-green-600" : "text-muted"}`} />
-                  </button>
-                </li>
+                {order.transferInfo.alias && (
+                  <li className="flex items-center justify-between gap-2">
+                    <span className="text-body">Alias</span>
+                    <button
+                      onClick={() => copyToClipboard(order.transferInfo!.alias, "alias")}
+                      className="flex items-center gap-1.5 font-mono font-medium text-ink hover:text-brand"
+                    >
+                      {order.transferInfo.alias}
+                      <Copy className={`h-3.5 w-3.5 ${copied === "alias" ? "text-green-600" : "text-muted"}`} />
+                    </button>
+                  </li>
+                )}
                 {order.transferInfo.cbu && (
                   <li className="flex items-center justify-between gap-2">
-                    <span className="text-body">CBU</span>
+                    <span className="text-body">CBU/CVU</span>
                     <button
                       onClick={() => copyToClipboard(order.transferInfo!.cbu!, "cbu")}
                       className="flex items-center gap-1.5 font-mono text-xs text-ink hover:text-brand"

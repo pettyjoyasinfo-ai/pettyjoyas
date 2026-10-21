@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SiteSetting;
 use App\Services\Sales\SalesService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -253,15 +254,22 @@ class PaymentService
 
     // ─── Transferencia ────────────────────────────────────────────────────
 
-    /** Datos bancarios que se muestran al cliente para hacer la transferencia. */
+    /**
+     * Datos bancarios que se muestran al cliente para hacer la transferencia.
+     * Se editan desde Configuración (site_settings); si alias o CBU/CVU están
+     * vacíos ahí, se usan los del .env.
+     */
     public function getTransferInfo(): array
     {
+        $p = SiteSetting::allWithDefaults()['payment'];
+        $pick = fn (string $key, mixed $fallback) => filled($p[$key] ?? null) ? trim((string) $p[$key]) : $fallback;
+
         return [
             'type'    => 'transferencia',
-            'alias'   => config('services.transfer.alias'),
-            'cbu'     => config('services.transfer.cbu'),
-            'bank'    => config('services.transfer.bank'),
-            'holder'  => config('services.transfer.holder'),
+            'alias'   => $pick('transfer_alias', config('services.transfer.alias')),
+            'cbu'     => $pick('transfer_cbu', config('services.transfer.cbu')),
+            'bank'    => $pick('transfer_bank', config('services.transfer.bank')),
+            'holder'  => $pick('transfer_holder', config('services.transfer.holder')),
             'whatsapp' => config('services.whatsapp.phone_id') ?? env('PETTY_WA_NUMBER', ''),
         ];
     }

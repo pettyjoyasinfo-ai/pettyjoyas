@@ -400,7 +400,7 @@ class ChatbotService
 
     private function buscarProductos(string $query, ?string $categoria): array
     {
-        $q = Product::query()->with('category')->where('active', true);
+        $q = Product::query()->with('category')->where('active', true)->where('hidden', false);
 
         // Antes se buscaba la frase completa como un solo bloque ("%plata
         // cintillo para mujer%"), que casi nunca matchea aunque el producto
@@ -452,6 +452,7 @@ class ChatbotService
     {
         $product = Product::with(['category', 'variants'])
             ->where('active', true)
+            ->where('hidden', false)
             ->where(fn ($w) => $w->where('slug', $term)->orWhere('name', 'like', "%{$term}%"))
             ->first();
 

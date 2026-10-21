@@ -11,7 +11,7 @@ class Product extends Model
     protected $fillable = [
         'slug', 'name', 'category_id', 'collection', 'price', 'compare_at_price',
         'short_description', 'description', 'specs', 'rating', 'reviews_count',
-        'badges', 'barcode', 'label_ref', 'label_weight', 'whatsapp_url', 'active', 'stock',
+        'badges', 'barcode', 'label_ref', 'label_weight', 'whatsapp_url', 'active', 'hidden', 'stock',
     ];
 
     protected $casts = [
@@ -19,6 +19,7 @@ class Product extends Model
         'badges' => 'array',
         'rating' => 'float',
         'active' => 'boolean',
+        'hidden' => 'boolean',
     ];
 
     public function category(): BelongsTo

@@ -25,6 +25,7 @@ class UpdateProductAction
                 'specs' => $data['specs'] ?? null,
                 'badges' => $data['badges'] ?? null,
                 'active' => $data['active'] ?? null,
+                'hidden' => $data['hidden'] ?? null,
                 'whatsapp_url' => $data['whatsapp_url'] ?? null,
             ], fn ($v) => $v !== null));
 

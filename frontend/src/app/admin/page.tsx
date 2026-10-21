@@ -15,7 +15,7 @@ export default function AdminDashboard() {
 
   if (isLoading || !stats) return <LoadingScreen label="Cargando métricas…" />;
 
-  const lowStock = products.filter((p: any) => p.stock > 0 && p.stock <= 5).slice(0, 4);
+  const lowStock = products.filter((p: any) => p.stock === 1).slice(0, 4);
   const recent = orders.slice(0, 5);
 
   const byChannel = orders.reduce(

@@ -27,11 +27,13 @@ class ProductController extends Controller
         $query = Product::query()->with(['category', 'variants', 'images'])->where('active', true);
 
         // La tienda pública no debe listar productos sin stock (ni el simple ni
-        // el que tiene TODAS sus variantes en 0) — pero el panel admin sigue
-        // viéndolos todos, para poder reponerlos. Alcanza con que UNA variante
-        // tenga stock para que el producto siga apareciendo.
+        // el que tiene TODAS sus variantes en 0) ni los ocultados a mano — pero
+        // el panel admin sigue viéndolos todos, para poder reponerlos o volver
+        // a publicarlos. Alcanza con que UNA variante tenga stock para que el
+        // producto siga apareciendo.
         if (! $request->user('sanctum')?->isStaff()) {
             $this->hideOutOfStock($query);
+            $query->where('hidden', false);
         }
 
         if ($cat = $request->query('categoria')) {
@@ -128,7 +130,7 @@ class ProductController extends Controller
             $hasStock = $product->variants->isNotEmpty()
                 ? $product->variants->contains(fn ($v) => $v->stock > 0)
                 : $product->stock > 0;
-            abort_if(! $hasStock, 404);
+            abort_if(! $hasStock || $product->hidden, 404);
         }
 
         $this->attachStock($product);

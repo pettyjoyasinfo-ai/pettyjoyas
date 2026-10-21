@@ -55,6 +55,7 @@ export default function EditarProducto() {
     short_description: "", description: "",
     whatsapp_url: "",
   });
+  const [hidden, setHidden] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [variants, setVariants] = useState<VariantRow[]>([]);
@@ -78,6 +79,7 @@ export default function EditarProducto() {
       description: product.description ?? "",
       whatsapp_url: product.whatsappUrl ?? "",
     });
+    setHidden(Boolean(product.hidden));
     setImages(product.images ?? []);
     setVariants(
       (product.variants ?? []).map((v: any) => ({
@@ -171,6 +173,7 @@ export default function EditarProducto() {
           short_description: form.short_description || null,
           description: form.description || null,
           whatsapp_url: form.whatsapp_url || null,
+          hidden,
           images,
           variants: variants
             .filter((v) => v.label.trim())
@@ -412,6 +415,23 @@ export default function EditarProducto() {
         </div>
 
         <div className="flex flex-col gap-5">
+          <Card title="Visibilidad en la tienda">
+            <label className="flex cursor-pointer items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={hidden}
+                onChange={(e) => setHidden(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand"
+              />
+              <span>
+                <span className="block font-medium text-ink">Ocultar de la tienda online</span>
+                <span className="text-[11px] text-muted">
+                  No se muestra al público, pero conserva su stock y sigue visible acá y en el POS. Destildalo para volver a publicarlo.
+                </span>
+              </span>
+            </label>
+          </Card>
+
           <Card title="Precio">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-ink">Precio (ARS) *</span>

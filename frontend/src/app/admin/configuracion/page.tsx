@@ -62,6 +62,10 @@ export default function AdminConfig() {
   const [mpEnabled,   setMpEnabled]   = useState(true);
   const [trfEnabled,  setTrfEnabled]  = useState(true);
   const [descuentoTrf, setDescuentoTrf] = useState(10);
+  const [trfBank,   setTrfBank]   = useState("Lemon");
+  const [trfHolder, setTrfHolder] = useState("Rodrigo David Larramendia");
+  const [trfAlias,  setTrfAlias]  = useState("");
+  const [trfCbu,    setTrfCbu]    = useState("");
   const [paySaved,    setPaySaved]    = useState(false);
 
   /* ── Envíos ── */
@@ -80,6 +84,10 @@ export default function AdminConfig() {
       setMpEnabled(p.mercadopago_enabled ?? true);
       setTrfEnabled(p.transferencia_enabled ?? true);
       setDescuentoTrf(p.descuento_transferencia ?? 10);
+      setTrfBank(p.transfer_bank ?? "Lemon");
+      setTrfHolder(p.transfer_holder ?? "Rodrigo David Larramendia");
+      setTrfAlias(p.transfer_alias ?? "");
+      setTrfCbu(p.transfer_cbu ?? "");
     }
     if (settings.shipping) {
       const s = settings.shipping as any;
@@ -97,6 +105,10 @@ export default function AdminConfig() {
         mercadopago_enabled: mpEnabled,
         transferencia_enabled: trfEnabled,
         descuento_transferencia: descuentoTrf,
+        transfer_bank: trfBank.trim(),
+        transfer_holder: trfHolder.trim(),
+        transfer_alias: trfAlias.trim(),
+        transfer_cbu: trfCbu.trim(),
       },
     });
     setPaySaved(true);
@@ -177,6 +189,28 @@ export default function AdminConfig() {
                 className={INPUT}
               />
             </label>
+          </div>
+          <div className="mt-4 border-t border-line pt-4">
+            <p className="mb-1 text-xs font-semibold text-ink">Datos que ve el cliente al transferir</p>
+            <p className="mb-3 text-xs text-muted">Se muestran en el checkout, en el pedido confirmado, en el mail y en el POS.</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-ink">Billetera / banco <span className="text-brand">*</span></span>
+                <input value={trfBank} onChange={(e) => setTrfBank(e.target.value)} className={INPUT} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-ink">Titular <span className="text-brand">*</span></span>
+                <input value={trfHolder} onChange={(e) => setTrfHolder(e.target.value)} className={INPUT} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-ink">Alias <span className="font-normal text-muted">(opcional)</span></span>
+                <input value={trfAlias} onChange={(e) => setTrfAlias(e.target.value)} className={INPUT} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-ink">CVU / CBU <span className="font-normal text-muted">(opcional)</span></span>
+                <input value={trfCbu} onChange={(e) => setTrfCbu(e.target.value)} inputMode="numeric" className={INPUT} />
+              </label>
+            </div>
           </div>
         </Card>
 

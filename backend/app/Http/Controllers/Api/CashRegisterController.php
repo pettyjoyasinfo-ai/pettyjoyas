@@ -167,7 +167,7 @@ class CashRegisterController extends Controller
             ->where('channel', 'local')
             ->whereIn('status', ['pagado', 'entregado'])
             ->where('created_at', '>=', $from)
-            ->selectRaw('DATE(DATE_SUB(created_at, INTERVAL 3 HOUR)) as dia, payment_method, COUNT(*) as cnt, SUM(total) as total')
+            ->selectRaw("DATE(DATE_SUB(created_at, INTERVAL 3 HOUR)) as dia, payment_method, SUM(kind = 'venta') as cnt, SUM(total) as total")
             ->groupBy('dia', 'payment_method')
             ->get();
 

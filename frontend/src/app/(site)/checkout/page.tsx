@@ -393,8 +393,8 @@ export default function CheckoutPage() {
                 {transferInfo ? (
                   <ul className="space-y-1">
                     <li>Banco: <strong>{transferInfo.bank}</strong></li>
-                    <li>Alias: <strong className="font-mono">{transferInfo.alias}</strong></li>
-                    {transferInfo.cbu && <li>CBU: <span className="font-mono">{transferInfo.cbu}</span></li>}
+                    {transferInfo.alias && <li>Alias: <strong className="font-mono">{transferInfo.alias}</strong></li>}
+                    {transferInfo.cbu && <li>CBU/CVU: <span className="font-mono">{transferInfo.cbu}</span></li>}
                     <li>Titular: <strong>{transferInfo.holder}</strong></li>
                   </ul>
                 ) : (

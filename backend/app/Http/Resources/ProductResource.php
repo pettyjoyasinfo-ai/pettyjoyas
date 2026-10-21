@@ -41,6 +41,7 @@ class ProductResource extends JsonResource
             'reviewsCount' => (int) $this->reviews_count,
             'badges' => $this->computeBadges(),
             'whatsappUrl' => $this->whatsapp_url,
+            'hidden' => (bool) $this->hidden,
             'createdAt' => $this->created_at?->toDateString(),
         ];
     }

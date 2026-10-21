@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\CashRegisterController;
+use App\Http\Controllers\Api\ExchangeController;
 use App\Http\Controllers\Api\PosController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ReportController;
@@ -161,6 +162,9 @@ Route::middleware(['auth:sanctum', 'staff'])->group(function () {
     Route::get('/pos/cash-register/{cashRegister}/sales', [CashRegisterController::class, 'sales']);
     Route::get('/pos/credit-notes', [CashRegisterController::class, 'indexCreditNotes']);
     Route::post('/pos/credit-notes', [CashRegisterController::class, 'storeCreditNote']);
+    Route::get('/pos/exchanges', [ExchangeController::class, 'index']);
+    Route::post('/pos/exchanges', [ExchangeController::class, 'store']);
+    Route::get('/pos/exchanges/order/{number}', [ExchangeController::class, 'order']);
 
     // Calibración de etiquetas de joyería (persiste para siempre)
     Route::get('/admin/label-settings', [LabelSettingController::class, 'show']);

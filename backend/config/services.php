@@ -44,10 +44,10 @@ return [
     ],
 
     'transfer' => [
-        'alias'  => env('BANK_ALIAS', 'pettyjoyas.mp'),
+        'alias'  => env('BANK_ALIAS', ''),
         'cbu'    => env('BANK_CBU', ''),
-        'bank'   => env('BANK_NAME', 'Mercado Pago'),
-        'holder' => env('BANK_HOLDER', 'Petty Joyas'),
+        'bank'   => env('BANK_NAME', 'Lemon'),
+        'holder' => env('BANK_HOLDER', 'Rodrigo David Larramendia'),
     ],
 
     'whatsapp' => [

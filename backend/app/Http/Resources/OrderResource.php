@@ -13,6 +13,7 @@ class OrderResource extends JsonResource
             'id' => (string) $this->id,
             'number' => $this->number,
             'channel' => $this->channel?->value,
+            'kind' => $this->kind ?? 'venta',
             'status' => $this->status?->value,
             'paymentMethod' => $this->payment_method,
             'paymentStatus' => $this->payment_status,

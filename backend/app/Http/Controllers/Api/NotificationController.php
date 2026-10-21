@@ -15,19 +15,20 @@ class NotificationController extends Controller
         // Pedidos esperando atención del equipo
         $pendingOrders = Order::where('status', OrderStatus::Pendiente)->count();
 
-        // Productos activos con stock total < 5 (calculado desde stock_movements)
+        // Productos activos a los que les queda exactamente 1 unidad: con variantes
+        // se suma el stock de todas; sin variantes cuenta el stock del propio producto.
         $lowStockCount = DB::table('products')
             ->leftJoinSub(
-                DB::table('stock_movements')
-                    ->selectRaw('product_id, SUM(quantity) as total')
+                DB::table('product_variants')
+                    ->selectRaw('product_id, SUM(stock) as total')
                     ->groupBy('product_id'),
-                'sm',
+                'pv',
                 'products.id',
                 '=',
-                'sm.product_id'
+                'pv.product_id'
             )
             ->where('products.active', true)
-            ->whereRaw('COALESCE(sm.total, 0) < 5')
+            ->whereRaw('COALESCE(pv.total, products.stock, 0) = 1')
             ->count();
 
         // Clientes registrados en las últimas 24 h

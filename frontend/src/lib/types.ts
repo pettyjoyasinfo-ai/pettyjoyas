@@ -69,6 +69,8 @@ export type Product = {
   reviewsCount: number;
   badges: ProductBadge[];
   whatsappUrl?: string | null;
+  /** Oculto de la tienda online aunque tenga stock (solo lo ve el panel). */
+  hidden?: boolean;
   createdAt: string;
 };
 

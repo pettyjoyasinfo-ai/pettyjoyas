@@ -38,6 +38,7 @@ class UpdateProductRequest extends FormRequest
             'specs' => ['nullable', 'array'],
             'badges' => ['nullable', 'array'],
             'active' => ['boolean'],
+            'hidden' => ['boolean'],
             'whatsapp_url' => ['nullable', 'string', 'max:600'],
             'images' => ['nullable', 'array'],
             'images.*' => ['string'],

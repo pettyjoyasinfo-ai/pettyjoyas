@@ -41,6 +41,7 @@ class StoreProductRequest extends FormRequest
             'specs' => ['nullable', 'array'],
             'badges' => ['nullable', 'array'],
             'active' => ['boolean'],
+            'hidden' => ['boolean'],
             'stock' => ['nullable', 'integer', 'min:0'],
             'images' => ['nullable', 'array'],
             'images.*' => ['string'],

@@ -23,7 +23,8 @@ class ReportService
     public function dashboard(CarbonImmutable $from, CarbonImmutable $to): array
     {
         $orders  = $this->paidOrders()->whereBetween('created_at', [$from, $to]);
-        $count   = (clone $orders)->count();
+        // Un cambio/devolución mueve plata (suma al total) pero no es un pedido más.
+        $count   = (clone $orders)->where('kind', 'venta')->count();
         $revenue = (int) (clone $orders)->sum('total');
 
         return [

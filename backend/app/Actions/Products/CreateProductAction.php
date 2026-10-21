@@ -29,6 +29,7 @@ class CreateProductAction
                 'badges' => $data['badges'] ?? [],
                 'whatsapp_url' => $data['whatsapp_url'] ?? $waUrl,
                 'active' => $data['active'] ?? true,
+                'hidden' => $data['hidden'] ?? false,
                 'stock' => empty($data['variants']) ? (int) ($data['stock'] ?? 0) : 0,
             ]);
 

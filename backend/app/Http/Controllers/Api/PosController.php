@@ -106,7 +106,7 @@ class PosController extends Controller
             ->whereIn('status', ['pagado', 'entregado'])
             ->where('created_at', '>=', $from)
             ->where('created_at', '<', $from->copy()->addDay())
-            ->selectRaw('payment_method, COUNT(*) as count, SUM(total) as total')
+            ->selectRaw("payment_method, SUM(kind = 'venta') as count, SUM(total) as total")
             ->groupBy('payment_method')
             ->get()
             ->keyBy('payment_method');

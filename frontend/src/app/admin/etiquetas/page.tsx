@@ -251,6 +251,12 @@ export default function AdminEtiquetas() {
   const [fold, setFold] = useState<LabelSettings>(DEFAULT_FOLD);
   const [dirty, setDirty] = useState(false);
 
+  // Llegar con ?buscar=Nombre (ej. desde un cambio en caja) deja el buscador ya filtrado.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("buscar");
+    if (q) setSearch(q);
+  }, []);
+
   // Hidrata el formulario con la calibración guardada apenas llega.
   useEffect(() => {
     if (savedSettings) setFold(savedSettings);

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
+  ArrowLeftRight,
   Banknote,
   Check,
   ChevronDown,
@@ -857,6 +858,9 @@ export default function AdminPOS() {
             <Link href="/admin/pos/ventas" className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-brand hover:text-brand">
               <ClipboardList className="h-3.5 w-3.5" /> Ventas
             </Link>
+            <Link href="/admin/pos/cambios" className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-brand hover:text-brand">
+              <ArrowLeftRight className="h-3.5 w-3.5" /> Cambios
+            </Link>
             <Link href="/admin/pos/historial" className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-brand hover:text-brand">
               <History className="h-3.5 w-3.5" /> Historial
             </Link>
@@ -1074,16 +1078,18 @@ export default function AdminPOS() {
                 {transferInfo && (
                   <div className="rounded-xl bg-stone-50 p-4 text-sm space-y-2">
                     <div className="flex justify-between"><span className="text-body">Banco</span><span className="font-medium text-ink">{transferInfo.bank}</span></div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-body">Alias</span>
-                      <button onClick={() => copy(transferInfo.alias, "alias")} className="flex items-center gap-1.5 font-mono font-semibold text-ink hover:text-brand">
-                        {transferInfo.alias}
-                        {copied === "alias" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5 text-muted" />}
-                      </button>
-                    </div>
+                    {transferInfo.alias && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-body">Alias</span>
+                        <button onClick={() => copy(transferInfo.alias, "alias")} className="flex items-center gap-1.5 font-mono font-semibold text-ink hover:text-brand">
+                          {transferInfo.alias}
+                          {copied === "alias" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5 text-muted" />}
+                        </button>
+                      </div>
+                    )}
                     {transferInfo.cbu && (
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-body">CBU</span>
+                        <span className="text-body">CBU/CVU</span>
                         <button onClick={() => copy(transferInfo.cbu, "cbu")} className="flex items-center gap-1.5 font-mono text-xs text-ink hover:text-brand">
                           {transferInfo.cbu}
                           {copied === "cbu" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5 text-muted" />}
@@ -1186,7 +1192,7 @@ export default function AdminPOS() {
                       <p className="truncate text-sm font-medium text-ink">{p.name}</p>
                       <p className="text-xs text-brand">
                         {formatPrice(p.price)}
-                        {p.stock <= 5 && <span className="ml-1.5 text-amber-600">· ¡{p.stock} u.!</span>}
+                        {p.stock === 1 && <span className="ml-1.5 text-amber-600">· ¡{p.stock} u.!</span>}
                       </p>
                     </div>
                     {p.variants.length > 0 && <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted" />}

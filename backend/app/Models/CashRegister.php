@@ -75,7 +75,8 @@ class CashRegister extends Model
     public function salesSummary(): array
     {
         $rows = $this->salesQuery()
-            ->selectRaw('payment_method, COUNT(*) as cnt, SUM(total) as total')
+            // cnt cuenta solo ventas: un cambio suma su diferencia de dinero pero no es una venta más.
+            ->selectRaw("payment_method, SUM(kind = 'venta') as cnt, SUM(total) as total")
             ->groupBy('payment_method')
             ->get()
             ->keyBy('payment_method');

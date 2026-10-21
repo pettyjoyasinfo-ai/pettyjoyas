@@ -47,6 +47,10 @@ class SettingController extends Controller
             'payment.mercadopago_enabled'         => ['sometimes', 'boolean'],
             'payment.transferencia_enabled'       => ['sometimes', 'boolean'],
             'payment.descuento_transferencia'     => ['sometimes', 'integer', 'min:0', 'max:100'],
+            'payment.transfer_bank'               => ['sometimes', 'nullable', 'string', 'max:80'],
+            'payment.transfer_holder'             => ['sometimes', 'nullable', 'string', 'max:120'],
+            'payment.transfer_alias'              => ['sometimes', 'nullable', 'string', 'max:80'],
+            'payment.transfer_cbu'                => ['sometimes', 'nullable', 'string', 'max:40'],
 
             'shipping'                      => ['sometimes', 'array'],
             'shipping.domicilio_enabled'    => ['sometimes', 'boolean'],

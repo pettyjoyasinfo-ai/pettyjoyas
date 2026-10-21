@@ -3,10 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Download, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Download, Eye, EyeOff, Pencil, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { Badge, CardGrid, PageHeader, StatCard } from "@/components/admin/ui";
 import { LoadingScreen, Spinner } from "@/components/ui/spinner";
-import { useAdminCategories, useAdminProducts, useCreateProduct, useDeleteProduct } from "@/lib/api/admin";
+import { useAdminCategories, useAdminProducts, useCreateProduct, useDeleteProduct, useUpdateProduct } from "@/lib/api/admin";
 import { formatPrice } from "@/lib/utils";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ import { formatPrice } from "@/lib/utils";
 function stockLevel(p: any): "ok" | "low" | "out" {
   const s = totalStock(p);
   if (s <= 0) return "out";
-  if (s <= 5) return "low";
+  if (s === 1) return "low";
   return "ok";
 }
 
@@ -73,7 +73,7 @@ async function exportXlsx(products: any[]) {
       price: p.price,
       stock: totalStock(p),
       variants: variantStr,
-      status: totalStock(p) <= 0 ? "Sin stock" : totalStock(p) <= 5 ? "Stock bajo" : "OK",
+      status: totalStock(p) <= 0 ? "Sin stock" : totalStock(p) === 1 ? "Stock bajo" : "OK",
       slug: p.slug,
     });
 
@@ -91,7 +91,7 @@ async function exportXlsx(products: any[]) {
         const s = totalStock(p);
         if (s <= 0) {
           cell.font = { ...cell.font, color: { argb: "FFCC0000" }, bold: true };
-        } else if (s <= 5) {
+        } else if (s === 1) {
           cell.font = { ...cell.font, color: { argb: "FFB45309" }, bold: true };
         } else {
           cell.font = { ...cell.font, color: { argb: "FF166534" } };
@@ -101,7 +101,7 @@ async function exportXlsx(products: any[]) {
       if (colNum === 8) {
         const s = totalStock(p);
         if (s <= 0) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
-        else if (s <= 5) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+        else if (s === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
         else cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD1FAE5" } };
       }
       // Price formatting
@@ -398,12 +398,13 @@ function ProductImageGallery({ images, name }: { images: string[]; name: string 
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-const STOCK_FILTERS = ["Todos", "Con stock", "Stock bajo", "Sin stock"] as const;
+const STOCK_FILTERS = ["Todos", "Con stock", "Stock bajo", "Sin stock", "Ocultos"] as const;
 
 export default function AdminProductos() {
   const { data: products = [], isLoading } = useAdminProducts();
   const { data: categories = [] } = useAdminCategories();
   const deleteProduct = useDeleteProduct();
+  const updateProduct = useUpdateProduct();
   const [stockFilter, setStockFilter] = useState<string>("Todos");
   const [catFilter, setCatFilter] = useState<string>("Todas");
   const [search, setSearch] = useState("");
@@ -422,9 +423,10 @@ export default function AdminProductos() {
     const s = stockLevel(p);
     const stock =
       stockFilter === "Todos" ? true :
-      stockFilter === "Con stock" ? s === "ok" :
+      stockFilter === "Con stock" ? s !== "out" :
       stockFilter === "Stock bajo" ? s === "low" :
-      stockFilter === "Sin stock" ? s === "out" : true;
+      stockFilter === "Sin stock" ? s === "out" :
+      stockFilter === "Ocultos" ? Boolean(p.hidden) : true;
     return cat && stock;
   });
 
@@ -437,6 +439,10 @@ export default function AdminProductos() {
   async function handleExport() {
     setExporting(true);
     try { await exportXlsx(products); } finally { setExporting(false); }
+  }
+
+  async function toggleHidden(p: any) {
+    await updateProduct.mutateAsync({ id: p.slug, body: { hidden: !p.hidden } });
   }
 
   async function handleDelete(slug: string) {
@@ -475,7 +481,7 @@ export default function AdminProductos() {
       <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="Unidades en stock" value={String(totalUnits)} />
         <StatCard label="Valor del inventario" value={formatPrice(invValue)} />
-        <StatCard label="Stock bajo (≤5)" value={String(lowCount)} />
+        <StatCard label="Stock bajo (1 unidad)" value={String(lowCount)} />
         <StatCard label="Sin stock" value={String(outCount)} />
       </div>
 
@@ -564,11 +570,22 @@ export default function AdminProductos() {
                       {level === "out" ? "Sin Stock" : level === "low" ? "Stock Bajo" : "En Stock"}
                     </Badge>
                     {p.compareAtPrice && <Badge className="bg-brand text-white">Oferta</Badge>}
+                    {p.hidden && <Badge className="bg-ink text-white">Oculto</Badge>}
                   </div>
                   <div className="absolute right-2.5 top-2.5 flex gap-1.5 md:opacity-0 md:group-hover:opacity-100">
                     <Link href={`/admin/productos/${p.slug}/editar`} aria-label="Editar" className="grid h-8 w-8 place-items-center rounded-full bg-white/90 text-ink shadow-sm transition">
                       <Pencil className="h-3.5 w-3.5" />
                     </Link>
+                    <button
+                      type="button"
+                      aria-label={p.hidden ? "Volver a publicar en la tienda" : "Ocultar de la tienda"}
+                      title={p.hidden ? "Volver a publicar en la tienda" : "Ocultar de la tienda"}
+                      onClick={() => toggleHidden(p)}
+                      disabled={updateProduct.isPending}
+                      className="grid h-8 w-8 place-items-center rounded-full bg-white/90 text-ink shadow-sm transition disabled:opacity-60"
+                    >
+                      {p.hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                    </button>
                     <button
                       type="button"
                       aria-label="Eliminar"

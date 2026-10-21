@@ -33,7 +33,7 @@ class CategoryController extends Controller
      */
     private function attachHasProducts($categories): void
     {
-        $counts = Product::where('active', true)
+        $counts = Product::where('active', true)->where('hidden', false)
             ->selectRaw('category_id, count(*) as total')
             ->groupBy('category_id')
             ->pluck('total', 'category_id');
