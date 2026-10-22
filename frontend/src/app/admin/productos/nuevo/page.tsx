@@ -198,7 +198,7 @@ export default function NuevoProducto() {
               <label className="flex flex-col gap-1.5"><span className="text-xs font-medium text-ink">Colección <span className="font-normal text-muted">(opcional)</span></span>
                 <input value={form.collection} onChange={(e) => set("collection", e.target.value)} placeholder="Eterna" className={inp} /></label>
               <label className="flex flex-col gap-1.5 sm:col-span-2"><span className="text-xs font-medium text-ink">Descripción corta <span className="font-normal text-muted">(opcional)</span></span>
-                <input value={form.short_description} onChange={(e) => set("short_description", e.target.value)} placeholder="Resumen para la grilla de la tienda" className={inp} /></label>
+                <input value={form.short_description} onChange={(e) => set("short_description", e.target.value)} maxLength={1000} placeholder="Resumen para la grilla de la tienda" className={inp} /></label>
               <label className="flex flex-col gap-1.5 sm:col-span-2"><span className="text-xs font-medium text-ink">Descripción <span className="font-normal text-muted">(opcional)</span></span>
                 <textarea rows={4} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Contá la historia de la pieza, materiales, terminaciones…" className={inp} /></label>
               <label className="flex flex-col gap-1.5 sm:col-span-2">

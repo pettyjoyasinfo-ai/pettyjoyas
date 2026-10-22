@@ -36,7 +36,7 @@ class StoreProductRequest extends FormRequest
             'category_id' => ['required', 'exists:categories,id'],
             'collection' => ['nullable', 'string'],
             'price' => ['required', 'integer', 'min:0'],
-            'short_description' => ['nullable', 'string'],
+            'short_description' => ['nullable', 'string', 'max:1000'],
             'description' => ['nullable', 'string'],
             'specs' => ['nullable', 'array'],
             'badges' => ['nullable', 'array'],
@@ -55,6 +55,13 @@ class StoreProductRequest extends FormRequest
             'variants.*.stock' => ['nullable', 'integer', 'min:0'],
             'variants.*.image_url' => ['nullable', 'string', 'max:600'],
             'whatsapp_url' => ['nullable', 'string', 'max:600'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'short_description.max' => 'La descripción corta es demasiado larga (máx. 1000 caracteres). Pasá el resto a la descripción completa.',
         ];
     }
 }
