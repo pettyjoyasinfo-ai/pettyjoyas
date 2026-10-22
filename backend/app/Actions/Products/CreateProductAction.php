@@ -43,13 +43,19 @@ class CreateProductAction
                     'type' => $v['type'] ?? 'variante',
                     'group' => $v['group'] ?? null,
                     'value' => $v['value'] ?? $v['label'],
-                    'sku' => $v['sku'] ?? Str::upper(Str::slug($product->name)).'-'.($i + 1),
+                    // El nombre puede repetirse entre productos, así que el SKU no puede salir
+                    // solo de nombre+orden (chocaba con el índice único): se arma con el id de
+                    // la variante, que se conoce recién después del insert.
+                    'sku' => $v['sku'] ?? 'TMP-'.Str::random(10),
                     'price_delta' => $v['price_delta'] ?? 0,
                     'weight' => $v['weight'] ?? null,
                     'image_url' => $v['image_url'] ?? null,
                     'stock' => (int) ($v['stock'] ?? 0),
                 ]);
-                $variant->update(['barcode' => self::variantBarcode($variant->id)]);
+                $variant->update([
+                    'sku' => $v['sku'] ?? Str::upper(Str::slug($product->name)).'-'.$variant->id,
+                    'barcode' => self::variantBarcode($variant->id),
+                ]);
             }
 
             foreach ($data['images'] ?? [] as $pos => $url) {
