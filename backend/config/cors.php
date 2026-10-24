@@ -10,6 +10,8 @@ return [
     'allowed_origins' => [
         'http://localhost:3000',
         'http://127.0.0.1:3000',
+        'https://pettyjoyas.com.ar',
+        'https://www.pettyjoyas.com.ar',
         env('FRONTEND_URL', 'http://localhost:3000'),
     ],
 
@@ -17,6 +19,7 @@ return [
         '/^https:\/\/.*\.vercel\.app$/',
         '/^http:\/\/localhost:\d+$/',
         '/^http:\/\/127\.0\.0\.1:\d+$/',
+        '/^https:\/\/(www\.)?pettyjoyas\.com\.ar$/',
     ],
 
     'allowed_headers' => ['*'],

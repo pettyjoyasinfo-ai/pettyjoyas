@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\DiscountResource;
+use App\Models\Category;
 use App\Models\Discount;
 use App\Support\RevalidateFrontend;
 use Illuminate\Http\Request;
@@ -69,6 +70,15 @@ class DiscountController extends Controller
 
     private function validateData(Request $request): array
     {
+        $cat = $request->input('category_id');
+        if ($cat !== null && ! is_numeric($cat)) {
+            $slug = str_starts_with((string) $cat, 'cat-') ? substr((string) $cat, 4) : (string) $cat;
+            $id = Category::where('slug', $slug)->value('id');
+            if ($id) {
+                $request->merge(['category_id' => $id]);
+            }
+        }
+
         return $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'type' => ['required', 'in:percent,fixed'],

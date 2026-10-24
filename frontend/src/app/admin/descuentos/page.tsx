@@ -12,6 +12,7 @@ import {
   useDiscounts,
   useUpdateDiscount,
 } from "@/lib/api/admin";
+import { CATEGORIES as SEED_CATEGORIES } from "@/lib/data/seed";
 import { formatPrice } from "@/lib/utils";
 
 const SCOPE_LABEL: Record<string, string> = {
@@ -28,7 +29,8 @@ const EMPTY = {
 
 export default function AdminDescuentos() {
   const { data: discounts = [], isLoading } = useDiscounts();
-  const { data: categories = [] } = useAdminCategories();
+  const { data: rawCategories = [], isLoading: isLoadingCategories } = useAdminCategories();
+  const categories = rawCategories.length > 0 ? rawCategories : SEED_CATEGORIES;
   const { data: products = [] } = useAdminProducts();
   const create = useCreateDiscount();
   const update = useUpdateDiscount();
@@ -53,12 +55,24 @@ export default function AdminDescuentos() {
 
   function startEdit(d: any) {
     setEditingId(d.id);
+    const catFormattedId =
+      d.categoryFormattedId ||
+      (d.categorySlug ? `cat-${d.categorySlug}` : "") ||
+      (d.categoryId ? (String(d.categoryId).startsWith("cat-") ? String(d.categoryId) : "") : "");
+    const matchingCat = categories.find(
+      (c: any) =>
+        String(c.id) === String(d.categoryId) ||
+        String(c.rawId) === String(d.categoryId) ||
+        c.slug === d.categorySlug ||
+        c.id === catFormattedId
+    );
+
     setForm({
       name: d.name,
       type: d.type,
       value: String(d.value),
       scope: d.scope,
-      category_id: d.categoryId ?? "",
+      category_id: matchingCat ? matchingCat.id : (catFormattedId || (d.categoryId ?? "")),
       product_ids: (d.productIds ?? []).map(String),
       starts_at: d.startsAt ?? "",
       ends_at: d.endsAt ?? "",
@@ -76,12 +90,23 @@ export default function AdminDescuentos() {
 
   async function save() {
     setMsg("");
+    let resolvedCategoryId: any = null;
+    if (form.scope === "category" && form.category_id) {
+      const found = categories.find(
+        (c: any) =>
+          String(c.id) === String(form.category_id) ||
+          String(c.rawId) === String(form.category_id) ||
+          c.slug === form.category_id
+      );
+      resolvedCategoryId = found?.rawId ? Number(found.rawId) : form.category_id;
+    }
+
     const body: any = {
       name: form.name,
       type: form.type,
       value: Number(form.value),
       scope: form.scope,
-      category_id: form.scope === "category" && form.category_id ? Number(form.category_id) : null,
+      category_id: resolvedCategoryId,
       product_ids: form.scope === "products" ? form.product_ids.map(Number) : null,
       starts_at: form.starts_at || null,
       ends_at: form.ends_at || null,
@@ -119,11 +144,12 @@ export default function AdminDescuentos() {
 
   async function toggleActive(d: any) {
     try {
+      const catId = d.categoryRawId ? Number(d.categoryRawId) : (d.categoryId && !isNaN(Number(d.categoryId)) ? Number(d.categoryId) : d.categoryId ?? null);
       await update.mutateAsync({
         id: d.id,
         body: {
           name: d.name, type: d.type, value: d.value, scope: d.scope,
-          category_id: d.categoryId ? Number(d.categoryId) : null,
+          category_id: catId,
           product_ids: d.productIds?.map(Number) ?? null,
           starts_at: d.startsAt ?? null, ends_at: d.endsAt ?? null,
           active: !d.active, requires_token: d.requiresToken,
@@ -331,18 +357,51 @@ export default function AdminDescuentos() {
             {form.scope === "category" && (
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-medium text-ink">Categoría <span className="text-brand">*</span></span>
-                <select value={form.category_id} onChange={(e) => set("category_id", e.target.value)} className={inp}>
-                  <option value="">Elegí una categoría…</option>
-                  {categories.map((c: any) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
+                <select
+                  value={form.category_id}
+                  onChange={(e) => set("category_id", e.target.value)}
+                  className={inp}
+                  disabled={isLoadingCategories && categories.length === 0}
+                >
+                  <option value="">
+                    {isLoadingCategories && categories.length === 0
+                      ? "Cargando categorías…"
+                      : "Elegí una categoría…"}
+                  </option>
+                  {(() => {
+                    const roots = categories.filter((c: any) => !c.parentSlug);
+                    const byParent: Record<string, any[]> = {};
+                    for (const c of categories as any[]) {
+                      if (c.parentSlug) {
+                        byParent[c.parentSlug] ??= [];
+                        byParent[c.parentSlug].push(c);
+                      }
+                    }
+                    return roots.map((r: any) => {
+                      const children = byParent[r.slug] ?? [];
+                      return children.length > 0 ? (
+                        <optgroup key={r.slug} label={r.name}>
+                          <option value={r.id}>{r.name} (general)</option>
+                          {children.map((ch: any) => (
+                            <option key={ch.id} value={ch.id}>
+                              {ch.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      );
+                    });
+                  })()}
                 </select>
                 {!form.category_id && (
                   <span className="text-[11px] text-red-600">
                     Sin categoría el descuento no se aplica a ningún producto.
                   </span>
                 )}
-                {form.category_id && !categories.find((c: any) => String(c.id) === String(form.category_id))?.parentSlug && (
+                {form.category_id && !categories.find((c: any) => String(c.id) === String(form.category_id) || String(c.rawId) === String(form.category_id) || c.slug === form.category_id)?.parentSlug && (
                   <span className="text-[11px] text-muted">
                     Si esta categoría tiene subcategorías, el descuento también se aplica a los
                     productos cargados en ellas.

@@ -401,7 +401,11 @@ export function useUploadMedia(folder?: "hero" | "products" | "variants" | "cate
 export function useAdminCategories() {
   return useQuery({
     queryKey: ["admin", "categories"],
-    queryFn: async () => unwrap<any[]>(await apiFetch<any>(`/categories`)),
+    queryFn: async () => {
+      const res = await apiFetch<any>(`/categories`);
+      return unwrap<any[]>(res);
+    },
+    staleTime: 1000 * 60 * 5,
   });
 }
 export function useCreateCategory() {
