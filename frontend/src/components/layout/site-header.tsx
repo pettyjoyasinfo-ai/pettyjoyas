@@ -56,7 +56,7 @@ function TiendaDropdown({
         <ChevronDown className="h-3.5 w-3.5" />
       </Link>
 
-      <div className="invisible absolute left-1/2 top-full w-64 -translate-x-1/2 rounded-2xl border border-line bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
+      <div className="invisible absolute left-1/2 top-full max-h-[calc(100vh-8rem)] w-64 -translate-x-1/2 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-white p-2 opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
         {tree.map(({ root, children }) =>
           children.length > 0 ? (
             <div key={root.slug}>
