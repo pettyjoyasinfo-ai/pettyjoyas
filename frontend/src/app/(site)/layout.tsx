@@ -15,8 +15,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const categories = await getCategories().catch(() => undefined);
 
   return (
-    // .tema-scope acota el tema estacional (Octubre Rosa) a la tienda; el admin no se toca.
-    <div className="tema-scope flex flex-1 flex-col">
+    <>
       <MetaPixel />
       <RouteProgress />
       <Announcement />
@@ -25,6 +24,6 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <SiteFooter />
       <CartDrawer />
       <ChatWidget />
-    </div>
+    </>
   );
 }
