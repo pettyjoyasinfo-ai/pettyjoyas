@@ -51,6 +51,8 @@ export type Product = {
   name: string;
   categorySlug: string;
   categoryName: string;
+  /** Slug de la categoría padre (solo en el listado de la tienda). */
+  categoryParentSlug?: string | null;
   collection?: string;
   /** Precio base en ARS. */
   price: number;

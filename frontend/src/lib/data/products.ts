@@ -60,6 +60,8 @@ export type ProductFilters = {
   category?: string;
   collection?: string;
   material?: string;
+  /** Talle de anillo (ej. "14"): solo anillos/alianzas con ese talle en stock. */
+  ringSize?: string;
   minPrice?: number;
   maxPrice?: number;
   onSale?: boolean;
@@ -90,6 +92,7 @@ function toQuery(filters: ProductFilters): string {
   if (filters.category) p.set("categoria", filters.category);
   if (filters.collection) p.set("coleccion", filters.collection);
   if (filters.material) p.set("material", filters.material);
+  if (filters.ringSize) p.set("talle", filters.ringSize);
   if (typeof filters.minPrice === "number") p.set("min", String(filters.minPrice));
   if (typeof filters.maxPrice === "number") p.set("max", String(filters.maxPrice));
   if (filters.onSale) p.set("oferta", "1");

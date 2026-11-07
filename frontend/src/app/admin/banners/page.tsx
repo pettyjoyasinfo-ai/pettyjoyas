@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/admin/ui";
 import { AppearanceBadges } from "@/components/admin/appearance-badges";
 import { AppearanceBars } from "@/components/admin/appearance-bars";
+import { AppearancePromo } from "@/components/admin/appearance-promo";
 import { AppearanceHero } from "@/components/admin/appearance-hero";
 import { AppearanceBanners } from "@/components/admin/appearance-banners";
 import { AppearanceAbout } from "@/components/admin/appearance-about";
@@ -21,7 +22,7 @@ export default function AdminApariencia() {
 
       {/* Índice de secciones */}
       <div className="mb-6 flex flex-wrap gap-2 text-xs">
-        {["Barra superior", "Beneficios", "Hero", "Banners", "Nosotros (home)", "Página Nosotros", "Colección", "Marcas", "Instagram"].map((s) => (
+        {["Barra superior", "Beneficios", "Flyers promocionales", "Hero", "Banners", "Nosotros (home)", "Página Nosotros", "Colección", "Marcas", "Instagram"].map((s) => (
           <span key={s} className="rounded-full border border-line bg-white px-3 py-1.5 text-body">
             {s}
           </span>
@@ -36,6 +37,7 @@ export default function AdminApariencia() {
         <div className="flex flex-col gap-6">
           <AppearanceHero />
           <AppearanceBars />
+          <AppearancePromo />
           <AppearanceBadges />
           <AppearanceBanners />
           <AppearanceAbout />

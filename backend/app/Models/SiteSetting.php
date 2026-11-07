@@ -53,6 +53,12 @@ class SiteSetting extends Model
                 'gratis_desde'      => 8000000,
                 'retiro_direccion'  => 'Av. Victoria Aguirre 262, N3370 Puerto Iguazú, Misiones',
             ],
+            // Flyers promocionales del listado de la tienda (ej. "15% en efectivo",
+            // "Ahora Misiones lun a mié"). Cada uno puede limitarse a días y fechas.
+            'promo' => [
+                'enabled' => false,
+                'items' => [],
+            ],
             // Visibilidad de badges en las tarjetas de producto.
             'badges' => [
                 'nuevo'     => true,

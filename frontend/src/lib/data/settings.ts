@@ -60,6 +60,22 @@ export type BrandsSettings = { heading: string; items: BrandItem[] };
 
 export type InstagramSettings = { urls: string[] };
 
+/** Flyer promocional del listado. days: 0=domingo … 6=sábado (vacío = todos los días). */
+export type PromoItem = {
+  id: string;
+  enabled: boolean;
+  title: string;
+  text?: string | null;
+  bg?: string | null;
+  fg?: string | null;
+  image?: string | null;
+  href?: string | null;
+  days?: number[];
+  from?: string | null;
+  to?: string | null;
+};
+export type PromoSettings = { enabled: boolean; items: PromoItem[] };
+
 export type SiteSettings = {
   announcement: { enabled: boolean; items: AnnouncementItem[] };
   features: { items: FeatureItem[] };
@@ -70,6 +86,7 @@ export type SiteSettings = {
   collection: CollectionSettings;
   brands: BrandsSettings;
   instagram: InstagramSettings;
+  promo: PromoSettings;
 };
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -147,6 +164,10 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   instagram: {
     urls: [],
   },
+  promo: {
+    enabled: false,
+    items: [],
+  },
 };
 
 // Caché de datos de Next (1 h, etiqueta "settings" para invalidar desde Laravel
@@ -169,6 +190,7 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
       collection:   data.collection   ?? DEFAULT_SETTINGS.collection,
       brands:       data.brands       ?? DEFAULT_SETTINGS.brands,
       instagram:    data.instagram    ?? DEFAULT_SETTINGS.instagram,
+      promo:        data.promo        ?? DEFAULT_SETTINGS.promo,
     };
   } catch {
     return DEFAULT_SETTINGS;

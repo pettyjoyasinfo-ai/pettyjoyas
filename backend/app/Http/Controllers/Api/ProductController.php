@@ -25,7 +25,7 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        $query = Product::query()->with(['category', 'variants', 'images'])->where('active', true);
+        $query = Product::query()->with(['category.parent', 'variants', 'images'])->where('active', true);
 
         // La tienda pública no debe listar productos sin stock (ni el simple ni
         // el que tiene TODAS sus variantes en 0) ni los ocultados a mano — pero
@@ -54,6 +54,10 @@ class ProductController extends Controller
                 $q->whereHas('variants', fn ($v) => $v->where('type', 'material')->where('value', 'like', "%{$mat}%"))
                     ->orWhere('specs->material', 'like', "%{$mat}%");
             });
+        }
+        // ?talle=14 (filtro de anillos): solo anillos/alianzas con ESE talle en stock.
+        if ($request->filled('talle')) {
+            $query->whereIn('products.id', $this->productIdsWithRingSize((string) $request->query('talle')));
         }
         if ($request->filled('min')) {
             $query->where('price', '>=', (int) $request->query('min'));
@@ -275,6 +279,50 @@ class ProductController extends Controller
             'labelRef'    => $target->label_ref,
             'labelWeight' => $target->label_weight,
         ]);
+    }
+
+    /**
+     * Ids de anillos/alianzas que tienen en stock el talle pedido. Los talles están cargados
+     * de varias formas ("14", "Talle 14", "TALLE 14", "N°14", "7,5"), a veces como tipo
+     * "material": se normalizan en PHP en vez de comparar el texto tal cual en SQL.
+     *
+     * @return array<int,int>
+     */
+    private function productIdsWithRingSize(string $talle): array
+    {
+        $wanted = self::normalizeSize($talle);
+        if ($wanted === '') {
+            return [];
+        }
+
+        $ringCategoryIds = \App\Models\Category::where('slug', 'like', 'anillos%')
+            ->orWhere('slug', 'alianzas')
+            ->pluck('slug')
+            ->flatMap(fn (string $slug) => \App\Models\Category::idsIncludingDescendants($slug))
+            ->unique()
+            ->all();
+
+        return ProductVariant::query()
+            ->whereIn('type', ['talle', 'material'])
+            ->where('stock', '>', 0)
+            ->whereHas('product', fn ($q) => $q->whereIn('category_id', $ringCategoryIds))
+            ->get(['product_id', 'label', 'value'])
+            ->filter(fn ($v) => self::normalizeSize($v->value ?: $v->label) === $wanted
+                || self::normalizeSize($v->label) === $wanted)
+            ->pluck('product_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /** "Talle 14" / "N°14" / " 14 " → "14"; "7.5" → "7,5". Vacío si no es un número. */
+    private static function normalizeSize(?string $raw): string
+    {
+        $s = mb_strtolower(trim((string) $raw));
+        $s = preg_replace('/^(talle|n\s*[°º.]?)\s*/u', '', $s);
+        $s = str_replace('.', ',', trim($s));
+
+        return preg_match('/^\d+(,\d+)?$/', $s) ? $s : '';
     }
 
     /**

@@ -40,7 +40,9 @@ export function ProductCard({ product }: { product: Product }) {
   const soldOut = product.stock <= 0;
   // Compra rápida: solo si TODAS las variantes son talles (anillos, alianzas…). Si el
   // producto además pide elegir material, color, etc., hay que entrar a la ficha.
-  const quickSizes = hasVariants && product.variants.every((v) => v.type === "talle");
+  // Alianzas quedan afuera: tienen demasiados talles y el listado se vuelve largo (los ven en la ficha).
+  const isAlianza = product.categorySlug === "alianzas" || product.categoryParentSlug === "alianzas";
+  const quickSizes = hasVariants && !isAlianza && product.variants.every((v) => v.type === "talle");
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState(false);
   const picked = quickSizes ? product.variants.find((v) => v.id === pickedId) ?? null : null;

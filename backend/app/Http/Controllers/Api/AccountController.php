@@ -164,7 +164,7 @@ class AccountController extends Controller
     public function favorites(Request $request)
     {
         $ids      = $request->user()->favorites()->pluck('product_id');
-        $products = Product::with(['category', 'variants', 'images'])->whereIn('id', $ids)->get();
+        $products = Product::with(['category.parent', 'variants', 'images'])->whereIn('id', $ids)->get();
 
         $products->each(function (Product $p) {
             $p->stock_total = $this->inventory->currentStock($p->id);

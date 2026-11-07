@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
+import { PromoStrip } from "@/components/shop/promo-strip";
 import { ShopSort } from "@/components/shop/shop-sort";
 import { ShopPagination } from "@/components/shop/pagination";
 import { MobileFilterDrawer } from "@/components/shop/mobile-filter-drawer";
@@ -31,6 +32,7 @@ export default async function TiendaPage({ searchParams }: { searchParams: SP })
     category: str(sp.categoria),
     collection: str(sp.coleccion),
     material: str(sp.material),
+    ringSize: str(sp.talle),
     minPrice: sp.min ? Number(str(sp.min)) : undefined,
     maxPrice: sp.max ? Number(str(sp.max)) : undefined,
     onSale: str(sp.oferta) === "1",
@@ -108,6 +110,8 @@ export default async function TiendaPage({ searchParams }: { searchParams: SP })
             {productsPage.total === 1 ? "producto" : "productos"}
           </p>
 
+          <PromoStrip />
+
           <ProductGrid products={products} />
 
           <ShopPagination
@@ -115,6 +119,7 @@ export default async function TiendaPage({ searchParams }: { searchParams: SP })
               categoria: filters.category,
               coleccion: filters.collection,
               material: filters.material,
+              talle: filters.ringSize,
               min: sp.min ? String(str(sp.min)) : undefined,
               max: sp.max ? String(str(sp.max)) : undefined,
               oferta: filters.onSale ? "1" : undefined,

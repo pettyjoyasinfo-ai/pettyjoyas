@@ -25,6 +25,9 @@ class ProductResource extends JsonResource
             'labelWeight' => $this->label_weight,
             'categorySlug' => $this->category?->slug,
             'categoryName' => $this->category?->name,
+            // Categoría padre (ej. "alianzas" para "plata-y-oro"). Solo si se cargó category.parent
+            // (listado de la tienda), para no sumar una consulta por producto en otros lados.
+            'categoryParentSlug' => $this->category?->relationLoaded('parent') ? $this->category->parent?->slug : null,
             'collection' => $this->collection,
             // Si hay una promo activa (DiscountService), el precio efectivo baja y
             // el precio base queda como "precio tachado".

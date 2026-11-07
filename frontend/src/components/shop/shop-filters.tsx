@@ -90,18 +90,25 @@ export function ShopFilters({
   const current = {
     categoria: searchParams.get("categoria") ?? "",
     material: searchParams.get("material") ?? "",
+    talle: searchParams.get("talle") ?? "",
     min: searchParams.get("min") ?? "",
     max: searchParams.get("max") ?? "",
     oferta: searchParams.get("oferta") ?? "",
   };
 
   const [customMin, setCustomMin] = useState(current.min);
+  const [sizeInput, setSizeInput] = useState(current.talle);
   const [customMax, setCustomMax] = useState(current.max);
 
   const tree = useMemo(() => buildTree(visibleCategories(categories)), [categories]);
 
   // Determine which parents should auto-expand (current slug is a child of them)
   const currentCat = categories.find((c) => c.slug === current.categoria);
+  // Anillos (de cualquier material) y alianzas: en vez del filtro "Material" (que mezcla talles,
+  // largos y colores cargados como variantes) se busca escribiendo el talle.
+  const isRingCategory =
+    !!currentCat &&
+    (currentCat.slug.startsWith("anillos") || currentCat.slug === "alianzas" || currentCat.parentSlug === "alianzas");
   const defaultExpanded = useMemo(() => {
     const set: Record<string, boolean> = {};
     if (currentCat?.parentSlug) set[currentCat.parentSlug] = true;
@@ -134,8 +141,13 @@ export function ShopFilters({
     [router, pathname, searchParams, onApply],
   );
 
-  const hasFilters = current.categoria || current.material || current.min || current.max || current.oferta;
-  const filterCount = [current.categoria, current.material, current.min || current.max, current.oferta].filter(Boolean).length;
+  const hasFilters = current.categoria || current.material || current.talle || current.min || current.max || current.oferta;
+  const filterCount = [current.categoria, current.material, current.talle, current.min || current.max, current.oferta].filter(Boolean).length;
+
+  function applySize() {
+    const t = sizeInput.trim();
+    update({ talle: t || null, material: null });
+  }
 
   function applyCustomPrice() {
     update({ min: customMin || null, max: customMax || null });
@@ -159,6 +171,7 @@ export function ShopFilters({
               router.push(pathname);
               setCustomMin("");
               setCustomMax("");
+              setSizeInput("");
               onApply?.();
             }}
             className="text-xs font-medium text-brand hover:underline"
@@ -174,7 +187,7 @@ export function ShopFilters({
           {/* Todas */}
           <li>
             <button
-              onClick={() => update({ categoria: null })}
+              onClick={() => update({ categoria: null, talle: null })}
               className={cn(
                 "w-full rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-stone-bg",
                 !current.categoria ? "font-semibold text-brand" : "text-body",
@@ -193,7 +206,7 @@ export function ShopFilters({
               <li key={root.slug}>
                 <div className="flex items-center">
                   <button
-                    onClick={() => update({ categoria: root.slug })}
+                    onClick={() => update({ categoria: root.slug, talle: null })}
                     className={cn(
                       "flex-1 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-stone-bg",
                       rootActive
@@ -233,7 +246,7 @@ export function ShopFilters({
                       {children.map((sub) => (
                         <li key={sub.slug}>
                           <button
-                            onClick={() => update({ categoria: sub.slug })}
+                            onClick={() => update({ categoria: sub.slug, talle: null })}
                             className={cn(
                               "w-full rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-stone-bg",
                               current.categoria === sub.slug
@@ -309,8 +322,41 @@ export function ShopFilters({
         </button>
       </Section>
 
+      {/* Talle (solo anillos y alianzas) */}
+      {isRingCategory && (
+        <Section title="Talle" count={current.talle ? 1 : 0}>
+          <div className="flex gap-2">
+            <input
+              inputMode="decimal"
+              placeholder="Ej: 14"
+              aria-label="Talle de anillo"
+              value={sizeInput}
+              onChange={(e) => setSizeInput(e.target.value.replace(/[^\d.,]/g, "").slice(0, 5))}
+              onKeyDown={(e) => e.key === "Enter" && applySize()}
+              className="w-full rounded-lg border border-line px-3 py-2 text-sm outline-none focus:border-brand"
+            />
+            <button
+              onClick={applySize}
+              className="shrink-0 rounded-lg border border-brand px-4 py-2 text-xs font-medium text-brand transition hover:bg-brand hover:text-white"
+            >
+              Buscar
+            </button>
+          </div>
+          {current.talle ? (
+            <button
+              onClick={() => { setSizeInput(""); update({ talle: null }); }}
+              className="mt-2 text-xs text-muted underline-offset-2 hover:text-brand hover:underline"
+            >
+              Ver todos los talles
+            </button>
+          ) : (
+            <p className="mt-2 text-xs text-muted">Te mostramos solo los anillos con ese talle disponible.</p>
+          )}
+        </Section>
+      )}
+
       {/* Material */}
-      {materials.length > 0 && (
+      {materials.length > 0 && !isRingCategory && (
         <Section title="Material" count={matCount}>
           <div className="flex flex-wrap gap-2">
             {materials.map((m) => (

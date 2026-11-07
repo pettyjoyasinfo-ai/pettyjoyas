@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  AlertTriangle, ArrowLeft, ArrowLeftRight, Check, Loader2, Minus, Plus, Printer, Search, Tag, Trash2, X,
+  AlertTriangle, ArrowLeft, ArrowLeftRight, Check, Loader2, Minus, Plus, Printer, ScanLine, Search, Tag, Trash2, X,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge, Card, PageHeader } from "@/components/admin/ui";
@@ -126,6 +126,10 @@ function ProductPicker({ onPick, placeholder }: {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState<Product | null>(null);
+  // Escaneo: la pistola "tipea" el código y manda Enter en este mismo campo.
+  const [scanned, setScanned] = useState<Product | null>(null);
+  const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q.trim()), 280);
@@ -135,14 +139,40 @@ function ProductPicker({ onPick, placeholder }: {
   const { data: results = [], isFetching } = useQuery<Product[]>({
     queryKey: ["pos", "exchange-search", debounced],
     queryFn: () => adminApiFetch(`/products?q=${encodeURIComponent(debounced)}`),
-    enabled: debounced.length >= 2,
+    // Solo números largos = un código escaneado: lo resuelve scan(), no la búsqueda por nombre.
+    enabled: debounced.length >= 2 && !/^\d{4,}$/.test(debounced),
     staleTime: 20_000,
   });
 
   function pick(p: Product, v: ProductVariant | null) {
     onPick(p, v);
     setOpen(null);
+    setScanned(null);
     setQ("");
+  }
+
+  /** Mismo criterio que el POS: código de variante → directo; de producto con variantes → elegir. */
+  async function scan(code: string) {
+    setScanning(true);
+    setScanMsg(null);
+    try {
+      const p = await adminApiFetch<Product & { matchedVariantId?: string | null }>(
+        `/products/lookup?barcode=${encodeURIComponent(code)}`,
+      );
+      const variant = p.matchedVariantId ? p.variants.find((v) => v.id === p.matchedVariantId) ?? null : null;
+      if (variant || p.variants.length === 0) {
+        pick(p, variant);
+        setScanMsg({ ok: true, text: `${p.name}${variant ? ` · ${variant.label}` : ""}` });
+      } else {
+        setScanned(p);
+        setQ("");
+        setScanMsg({ ok: true, text: `${p.name}: elegí la variante` });
+      }
+    } catch {
+      setScanMsg({ ok: false, text: `Código "${code}" no encontrado` });
+    } finally {
+      setScanning(false);
+    }
   }
 
   return (
@@ -151,14 +181,51 @@ function ProductPicker({ onPick, placeholder }: {
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <input
           value={q}
-          onChange={(e) => { setQ(e.target.value); setOpen(null); }}
+          onChange={(e) => { setQ(e.target.value); setOpen(null); setScanMsg(null); }}
+          onKeyDown={(e) => {
+            const code = q.trim();
+            // Un código de barras son solo números: Enter con eso = escaneo.
+            if (e.key === "Enter" && /^\d{4,}$/.test(code)) {
+              e.preventDefault();
+              scan(code);
+            }
+          }}
           placeholder={placeholder}
           className="w-full rounded-xl border border-line bg-white py-2.5 pl-10 pr-10 text-sm outline-none transition focus:border-brand"
         />
-        {isFetching && <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted" />}
+        {(isFetching || scanning)
+          ? <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted" />
+          : <ScanLine className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />}
       </div>
 
-      {debounced.length >= 2 && (
+      {scanMsg && (
+        <p className={`mt-1.5 text-xs ${scanMsg.ok ? "text-green-700" : "text-red-600"}`}>{scanMsg.text}</p>
+      )}
+
+      {scanned && (
+        <div className="mt-2 rounded-xl border border-line bg-stone-bg px-4 py-3">
+          <p className="mb-2 flex items-center justify-between text-sm font-medium text-ink">
+            {scanned.name}
+            <button type="button" onClick={() => setScanned(null)} aria-label="Cancelar" className="text-muted hover:text-red-500">
+              <X className="h-4 w-4" />
+            </button>
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {scanned.variants.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => pick(scanned, v)}
+                className="rounded-full border border-line bg-white px-3 py-1 text-xs text-ink hover:border-brand hover:text-brand"
+              >
+                {v.label} <span className="text-muted">· {v.stock}u</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {debounced.length >= 2 && !/^\d{4,}$/.test(debounced) && (
         <div className="mt-2 max-h-72 overflow-y-auto rounded-xl border border-line bg-white">
           {results.length === 0 && !isFetching && <p className="px-4 py-3 text-sm text-muted">Sin resultados.</p>}
           {results.slice(0, 30).map((p) => (
@@ -470,7 +537,7 @@ export default function PosCambiosPage() {
             </div>
 
             <ProductPicker
-              placeholder="Buscar el artículo que devuelve…"
+              placeholder="Escaneá o buscá el artículo que devuelve…"
               onPick={(p, v) => addLine(setReturned, "in", p, v)}
             />
 
@@ -488,7 +555,7 @@ export default function PosCambiosPage() {
           <Card title="2 · Lo que se lleva el cliente">
             <p className="mb-3 text-xs text-muted">Dejalo vacío si es solo una devolución.</p>
             <ProductPicker
-              placeholder="Buscar el artículo que se lleva…"
+              placeholder="Escaneá o buscá el artículo que se lleva…"
               onPick={(p, v) => addLine(setDelivered, "out", p, v)}
             />
             {delivered.length > 0 && (
