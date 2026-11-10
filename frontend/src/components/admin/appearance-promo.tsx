@@ -91,7 +91,7 @@ export function AppearancePromo() {
 
   return (
     <Card
-      title="Flyers promocionales (arriba del listado de la tienda)"
+      title="Flyers promocionales (barra flotante abajo)"
       action={
         <span className="flex items-center gap-2 text-xs text-body">
           Visible <button onClick={() => setPromo((p) => ({ ...p, enabled: !p.enabled }))}><Toggle on={promo.enabled} /></button>
@@ -99,7 +99,8 @@ export function AppearancePromo() {
       }
     >
       <p className="mb-4 text-xs text-muted">
-        Una franja de una línea arriba de los productos, que el cliente puede cerrar. Si hay varias vigentes el mismo día, van rotando.
+        Una barra chica fija en la parte de abajo de la tienda, que acompaña al cliente mientras navega y aparece de a poco.
+        Se puede cerrar y no se muestra en el carrito ni en el checkout. Si hay varias vigentes el mismo día, van rotando.
         Ej.: &quot;15% de descuento en efectivo o transferencia (excepto Oro)&quot; o &quot;Ahora Misiones con Banco Macro&quot; de lunes a miércoles.
       </p>
 

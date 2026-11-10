@@ -34,6 +34,8 @@ type SaleDetail = {
   number: string;
   status: string;
   paymentMethod: string;
+  /** venta | cambio | devolucion (asiento de caja de un cambio). */
+  kind?: string;
   total: number;
   customer: { name: string } | null;
   items: { name: string; variantLabel: string | null; unitPrice: number; quantity: number }[];
@@ -178,22 +180,29 @@ export default function PosHistorialPage() {
         </div>
       )}
 
-      {detailId != null && <SessionDetailModal cashRegisterId={detailId} onClose={() => setDetailId(null)} />}
+      {detailId != null && (
+        <SalesDetailModal
+          title="Ventas de la sesión"
+          url={`/pos/cash-register/${detailId}/sales`}
+          onClose={() => setDetailId(null)}
+        />
+      )}
     </>
   );
 }
 
-function SessionDetailModal({ cashRegisterId, onClose }: { cashRegisterId: number; onClose: () => void }) {
+/** Detalle de ventas (de una caja o de un día): lo que se vendió, a qué hora y con qué medio. */
+function SalesDetailModal({ title, url, onClose }: { title: string; url: string; onClose: () => void }) {
   const { data: sales = [], isLoading } = useQuery<SaleDetail[]>({
-    queryKey: ["pos", "cash-register", "sales", cashRegisterId],
-    queryFn: () => adminApiFetch(`/pos/cash-register/${cashRegisterId}/sales`),
+    queryKey: ["pos", "sales-detail", url],
+    queryFn: () => adminApiFetch(url),
   });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4 backdrop-blur-sm">
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h3 className="text-base font-semibold text-ink">Ventas de la sesión</h3>
+          <h3 className="text-base font-semibold text-ink">{title}</h3>
           <button onClick={onClose} className="text-muted hover:text-ink">
             <X className="h-5 w-5" />
           </button>
@@ -203,14 +212,19 @@ function SessionDetailModal({ cashRegisterId, onClose }: { cashRegisterId: numbe
           {isLoading ? (
             <div className="py-16 text-center text-sm text-muted">Cargando ventas…</div>
           ) : sales.length === 0 ? (
-            <div className="py-16 text-center text-sm text-muted">No hubo ventas en esta sesión.</div>
+            <div className="py-16 text-center text-sm text-muted">No hubo ventas.</div>
           ) : (
             <div className="divide-y divide-line">
               {sales.map(s => (
                 <div key={s.id} className="px-5 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-ink">{s.number}</p>
+                      <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                        {s.number}
+                        {s.kind && s.kind !== "venta" && (
+                          <Badge className="bg-blue-50 text-blue-700">{s.kind === "cambio" ? "Cambio" : "Devolución"}</Badge>
+                        )}
+                      </p>
                       <p className="text-xs text-muted">
                         {fmtTime(s.createdAt)} · {s.customer?.name ?? "Sin cliente"} · {PAYMENT_METHOD_LABEL[s.paymentMethod] ?? s.paymentMethod}
                       </p>
@@ -252,6 +266,7 @@ type DayRow = {
  * del día y no mezcla un día con otro aunque una caja haya quedado abierta de un día para el otro.
  */
 function DaySummary() {
+  const [openDay, setOpenDay] = useState<string | null>(null);
   const { data: rows = [] } = useQuery<DayRow[]>({
     queryKey: ["pos", "cash-register", "days"],
     queryFn: () => adminApiFetch("/pos/cash-register/days?dias=7"),
@@ -297,9 +312,22 @@ function DaySummary() {
                 </div>
               ))}
             </div>
+            <button
+              onClick={() => setOpenDay(d.date)}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-line py-1.5 text-xs font-medium text-ink transition hover:border-brand hover:text-brand"
+            >
+              <Eye className="h-3.5 w-3.5" /> Ver ventas del día
+            </button>
           </Card>
         ))}
       </div>
+      {openDay && (
+        <SalesDetailModal
+          title={`Ventas del ${new Date(`${openDay}T12:00:00`).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" })}`}
+          url={`/pos/cash-register/days/${openDay}/sales`}
+          onClose={() => setOpenDay(null)}
+        />
+      )}
     </section>
   );
 }

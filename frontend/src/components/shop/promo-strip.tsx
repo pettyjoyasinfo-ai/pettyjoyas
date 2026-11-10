@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { usePublicSettings } from "@/lib/api/admin";
 import type { PromoItem, PromoSettings } from "@/lib/data/settings";
@@ -62,20 +63,29 @@ export function PromoCard({ item, onClose }: { item: PromoItem; onClose?: () => 
 }
 
 /**
- * Franja de promociones arriba del listado de productos. Se edita en el panel
- * (Apariencia → Flyers promocionales). Si hay varias vigentes hoy, rota entre ellas.
- * Una sola línea y con botón para cerrarla (queda cerrada en esa visita).
+ * Flyer flotante: una barra chica fija abajo que acompaña al cliente mientras navega la tienda.
+ * Aparece de a poco (al bajar un poco o a los pocos segundos), rota entre las promos vigentes
+ * de hoy y se puede cerrar (queda cerrada en esa visita). Se edita en el panel
+ * (Apariencia → Flyers promocionales). Deja libre la esquina de WhatsApp y el chat.
  */
-export function PromoStrip() {
+export function PromoFloating() {
+  const pathname = usePathname();
   const { data } = usePublicSettings();
   const promo = data?.promo as PromoSettings | undefined;
   const [mounted, setMounted] = useState(false);
   const [closed, setClosed] = useState(false);
+  const [shown, setShown] = useState(false);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
     setMounted(true);
     try { setClosed(sessionStorage.getItem(DISMISS_KEY) === "1"); } catch { /* sin storage */ }
+    // "Que vaya apareciendo": entra con un deslizamiento al bajar un poco o a los 4 segundos.
+    const reveal = () => setShown(true);
+    const onScroll = () => { if (window.scrollY > 250) reveal(); };
+    const t = setTimeout(reveal, 4000);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { clearTimeout(t); window.removeEventListener("scroll", onScroll); };
   }, []);
 
   // La vigencia depende del día: se calcula recién en el navegador (evita diferencias con el HTML del servidor).
@@ -83,11 +93,13 @@ export function PromoStrip() {
 
   useEffect(() => {
     if (items.length < 2) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % items.length), 6000);
+    const t = setInterval(() => setIndex((i) => (i + 1) % items.length), 7000);
     return () => clearInterval(t);
   }, [items.length]);
 
-  if (closed || items.length === 0) return null;
+  // En carrito y checkout no distrae ni tapa el botón de pagar.
+  const hiddenHere = pathname?.startsWith("/checkout") || pathname?.startsWith("/carrito");
+  if (closed || hiddenHere || items.length === 0) return null;
   const item = items[index % items.length];
 
   function close() {
@@ -96,21 +108,15 @@ export function PromoStrip() {
   }
 
   return (
-    <div className="mb-5" aria-live="polite">
-      <PromoCard item={item} onClose={close} />
-      {items.length > 1 && (
-        <div className="mt-1.5 flex justify-center gap-1.5">
-          {items.map((it, i) => (
-            <button
-              key={it.id || i}
-              type="button"
-              onClick={() => setIndex(i)}
-              aria-label={`Ver promoción ${i + 1}`}
-              className={`h-1.5 rounded-full transition-all ${i === index % items.length ? "w-4 bg-ink" : "w-1.5 bg-line"}`}
-            />
-          ))}
-        </div>
-      )}
+    <div
+      aria-live="polite"
+      className={`fixed bottom-4 left-3 right-[5.5rem] z-30 transition-all duration-700 ease-out md:left-1/2 md:right-auto md:w-[min(560px,calc(100%-14rem))] md:-translate-x-1/2 ${
+        shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"
+      }`}
+    >
+      <div key={item.id || index} className="rounded-xl opacity-95 shadow-lg">
+        <PromoCard item={item} onClose={close} />
+      </div>
     </div>
   );
 }

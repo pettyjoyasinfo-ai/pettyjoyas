@@ -197,6 +197,26 @@ class CashRegisterController extends Controller
         return response()->json(array_values($out));
     }
 
+    /**
+     * GET /pos/cash-register/days/{AAAA-MM-DD}/sales — detalle de las ventas del POS de un día
+     * argentino (mismo criterio que days(): todas las cajas de ese día, sin mezclar días).
+     */
+    public function daySales(string $date): JsonResponse
+    {
+        $from = \Carbon\Carbon::createFromFormat('Y-m-d', $date, CashRegister::TZ)->startOfDay()->utc();
+
+        $orders = Order::query()
+            ->where('channel', 'local')
+            ->whereIn('status', ['pagado', 'entregado'])
+            ->where('created_at', '>=', $from)
+            ->where('created_at', '<', $from->copy()->addDay())
+            ->with(['items', 'customer'])
+            ->latest()
+            ->get();
+
+        return OrderResource::collection($orders)->response();
+    }
+
     /** GET /pos/cash-register/{cashRegister}/sales — detalle de todas las ventas de una sesión de caja. */
     public function sales(CashRegister $cashRegister): JsonResponse
     {

@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ProductGrid } from "@/components/product/product-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
-import { PromoStrip } from "@/components/shop/promo-strip";
 import { ShopSort } from "@/components/shop/shop-sort";
 import { ShopPagination } from "@/components/shop/pagination";
 import { MobileFilterDrawer } from "@/components/shop/mobile-filter-drawer";
@@ -109,8 +108,6 @@ export default async function TiendaPage({ searchParams }: { searchParams: SP })
             {productsPage.total}{" "}
             {productsPage.total === 1 ? "producto" : "productos"}
           </p>
-
-          <PromoStrip />
 
           <ProductGrid products={products} />
 

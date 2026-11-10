@@ -2,6 +2,7 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { ChatWidget } from "@/components/chat-widget";
+import { PromoFloating } from "@/components/shop/promo-strip";
 import { Announcement } from "@/components/layout/announcement";
 import { RouteProgress } from "@/components/ui/route-progress";
 import { MetaPixel } from "@/components/analytics/meta-pixel";
@@ -23,6 +24,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <CartDrawer />
+      <PromoFloating />
       <ChatWidget />
     </>
   );
