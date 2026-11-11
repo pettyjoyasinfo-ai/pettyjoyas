@@ -70,6 +70,8 @@ export type PromoItem = {
   fg?: string | null;
   image?: string | null;
   href?: string | null;
+  /** Texto del botón (solo se muestra si hay href). */
+  cta?: string | null;
   days?: number[];
   from?: string | null;
   to?: string | null;

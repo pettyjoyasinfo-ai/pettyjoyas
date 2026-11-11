@@ -70,6 +70,7 @@ class SettingController extends Controller
             'promo.items.*.fg'       => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'promo.items.*.image'    => ['nullable', 'string', 'max:500'],
             'promo.items.*.href'     => ['nullable', 'string', 'max:300'],
+            'promo.items.*.cta'      => ['nullable', 'string', 'max:30'],
             'promo.items.*.days'     => ['nullable', 'array'],
             'promo.items.*.days.*'   => ['integer', 'between:0,6'],
             'promo.items.*.from'     => ['nullable', 'date_format:Y-m-d'],

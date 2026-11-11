@@ -5,7 +5,7 @@ import { Check, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { Card, FieldLabel, Toggle } from "@/components/admin/ui";
 import { Spinner } from "@/components/ui/spinner";
 import { PromoCard, isPromoActive } from "@/components/shop/promo-strip";
-import { useSettings, useUpdateSettings, useUploadMedia } from "@/lib/api/admin";
+import { useAdminCategories, useSettings, useUpdateSettings, useUploadMedia } from "@/lib/api/admin";
 import { DEFAULT_SETTINGS, type PromoItem, type PromoSettings } from "@/lib/data/settings";
 
 const inp = "rounded-xl border border-line px-3.5 py-2.5 text-sm outline-none focus:border-brand";
@@ -18,7 +18,7 @@ const DAYS: { n: number; label: string }[] = [
 function newItem(): PromoItem {
   return {
     id: `promo-${Date.now()}`, enabled: true, title: "", text: "",
-    bg: "#821f40", fg: "#ffffff", image: null, href: null, days: [], from: null, to: null,
+    bg: "#821f40", fg: "#ffffff", image: null, href: null, cta: null, days: [], from: null, to: null,
   };
 }
 
@@ -35,6 +35,21 @@ export function AppearancePromo() {
   const { data, isLoading } = useSettings();
   const save = useUpdateSettings();
   const upload = useUploadMedia("hero");
+  const { data: categories = [] } = useAdminCategories();
+  // Destinos listos para el botón: así no hay que escribir el link a mano.
+  const destinations: { label: string; href: string }[] = [
+    { label: "Toda la tienda", href: "/tienda" },
+    { label: "Productos en oferta", href: "/tienda?oferta=1" },
+    ...categories
+      .filter((c: any) => c.slug)
+      .map((c: any) => ({
+        label: c.parentSlug
+          ? `${categories.find((p: any) => p.slug === c.parentSlug)?.name ?? c.parentSlug} › ${c.name}`
+          : c.name,
+        href: `/tienda?categoria=${c.slug}`,
+      }))
+      .sort((a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label, "es")),
+  ];
 
   const [promo, setPromo] = useState<PromoSettings>(DEFAULT_SETTINGS.promo);
   const [saved, setSaved] = useState(false);
@@ -74,7 +89,8 @@ export function AppearancePromo() {
         ...i,
         title: i.title.trim(),
         text: i.text?.trim() || null,
-        href: i.href?.trim() || null,
+        href: i.href?.trim() && i.href.trim() !== "https://" ? i.href.trim() : null,
+        cta: i.cta?.trim() || null,
         from: i.from || null,
         to: i.to || null,
       }));
@@ -134,11 +150,37 @@ export function AppearancePromo() {
                 <input value={it.text ?? ""} maxLength={160} onChange={(e) => setItem(i, { text: e.target.value })}
                   placeholder="Excepto productos de Oro" className={inp} />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <FieldLabel label="Link al tocarlo" optional />
-                <input value={it.href ?? ""} maxLength={300} onChange={(e) => setItem(i, { href: e.target.value })}
-                  placeholder="/tienda?oferta=1" className={inp} />
-              </label>
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <FieldLabel label="Botón: a dónde lleva" optional />
+                <div className="flex flex-wrap gap-2">
+                  <select
+                    value={destinations.some((d) => d.href === it.href) ? it.href ?? "" : it.href ? "__otro" : ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "__otro") setItem(i, { href: it.href && !destinations.some((d) => d.href === it.href) ? it.href : "https://" });
+                      else setItem(i, { href: v || null });
+                    }}
+                    className={`${inp} min-w-0 flex-1`}
+                  >
+                    <option value="">Sin botón</option>
+                    {destinations.map((d) => (
+                      <option key={d.href} value={d.href}>{d.label}</option>
+                    ))}
+                    <option value="__otro">Otro link…</option>
+                  </select>
+                  {it.href && (
+                    <input value={it.cta ?? ""} maxLength={30} onChange={(e) => setItem(i, { cta: e.target.value })}
+                      placeholder="Texto del botón (ej. Ver relojes)" className={`${inp} min-w-0 flex-1`} />
+                  )}
+                </div>
+                {it.href && !destinations.some((d) => d.href === it.href) && (
+                  <input value={it.href} maxLength={300} onChange={(e) => setItem(i, { href: e.target.value })}
+                    placeholder="/tienda?q=casio o https://…" className={inp} />
+                )}
+                <span className="text-[11px] text-muted">
+                  {it.href ? `El botón dice "${it.cta?.trim() || "Ver más"}". Tocar el flyer también lleva ahí.` : "Sin destino no se muestra ningún botón."}
+                </span>
+              </div>
               <div className="flex flex-wrap items-end gap-3">
                 <label className="flex flex-col gap-1.5">
                   <FieldLabel label="Fondo" />

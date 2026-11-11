@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { Percent, X } from "lucide-react";
 import { usePublicSettings } from "@/lib/api/admin";
 import type { PromoItem, PromoSettings } from "@/lib/data/settings";
 
@@ -30,8 +30,19 @@ export function isPromoActive(item: PromoItem, today = argentinaToday()): boolea
   return true;
 }
 
+/** Link interno (/tienda…) con Link de Next; uno externo (https://, wa.me) se abre en otra pestaña. */
+function PromoLink({ href, className, style, children }: {
+  href: string; className: string; style?: React.CSSProperties; children: React.ReactNode;
+}) {
+  if (/^https?:\/\//i.test(href)) {
+    return <a href={href} target="_blank" rel="noopener noreferrer" className={className} style={style}>{children}</a>;
+  }
+  return <Link href={href} prefetch={false} className={className} style={style}>{children}</Link>;
+}
+
 export function PromoCard({ item, onClose }: { item: PromoItem; onClose?: () => void }) {
   const style = { backgroundColor: item.bg || "#821f40", color: item.fg || "#ffffff" };
+  const href = item.href?.trim() || "";
   const body = (
     <span className="flex min-w-0 items-center gap-3">
       {item.image && (
@@ -48,13 +59,23 @@ export function PromoCard({ item, onClose }: { item: PromoItem; onClose?: () => 
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl px-4 py-2.5" style={style}>
-      {item.href ? (
-        <Link href={item.href} prefetch={false} className="min-w-0 flex-1 hover:opacity-90">{body}</Link>
+      {href ? (
+        <PromoLink href={href} className="min-w-0 flex-1 hover:opacity-90">{body}</PromoLink>
       ) : (
         <div className="min-w-0 flex-1">{body}</div>
       )}
+      {/* El botón solo aparece si la promo tiene a dónde llevar. Colores invertidos para que se distinga. */}
+      {href && (
+        <PromoLink
+          href={href}
+          className="shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold transition hover:opacity-90"
+          style={{ backgroundColor: item.fg || "#ffffff", color: item.bg || "#821f40" }}
+        >
+          {item.cta?.trim() || "Ver más"}
+        </PromoLink>
+      )}
       {onClose && (
-        <button type="button" onClick={onClose} aria-label="Cerrar promoción" className="shrink-0 opacity-70 hover:opacity-100">
+        <button type="button" onClick={onClose} aria-label="Minimizar promoción" className="shrink-0 opacity-70 hover:opacity-100">
           <X className="h-4 w-4" />
         </button>
       )}
@@ -64,22 +85,23 @@ export function PromoCard({ item, onClose }: { item: PromoItem; onClose?: () => 
 
 /**
  * Flyer flotante: una barra chica fija abajo que acompaña al cliente mientras navega la tienda.
- * Aparece de a poco (al bajar un poco o a los pocos segundos), rota entre las promos vigentes
- * de hoy y se puede cerrar (queda cerrada en esa visita). Se edita en el panel
- * (Apariencia → Flyers promocionales). Deja libre la esquina de WhatsApp y el chat.
+ * Aparece de a poco (al bajar un poco o a los pocos segundos) y rota entre las promos vigentes
+ * de hoy. Con la ✕ se achica a una burbuja abajo a la izquierda (queda así en esa visita) y al
+ * tocarla se vuelve a abrir. Se edita en el panel (Apariencia → Flyers promocionales).
+ * Deja libre la esquina de WhatsApp y el chat.
  */
 export function PromoFloating() {
   const pathname = usePathname();
   const { data } = usePublicSettings();
   const promo = data?.promo as PromoSettings | undefined;
   const [mounted, setMounted] = useState(false);
-  const [closed, setClosed] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [shown, setShown] = useState(false);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
     setMounted(true);
-    try { setClosed(sessionStorage.getItem(DISMISS_KEY) === "1"); } catch { /* sin storage */ }
+    try { setMinimized(sessionStorage.getItem(DISMISS_KEY) === "1"); } catch { /* sin storage */ }
     // "Que vaya apareciendo": entra con un deslizamiento al bajar un poco o a los 4 segundos.
     const reveal = () => setShown(true);
     const onScroll = () => { if (window.scrollY > 250) reveal(); };
@@ -92,30 +114,59 @@ export function PromoFloating() {
   const items = mounted && promo?.enabled ? (promo.items ?? []).filter((i) => isPromoActive(i)) : [];
 
   useEffect(() => {
-    if (items.length < 2) return;
+    if (items.length < 2 || minimized) return;
     const t = setInterval(() => setIndex((i) => (i + 1) % items.length), 7000);
     return () => clearInterval(t);
-  }, [items.length]);
+  }, [items.length, minimized]);
 
   // En carrito y checkout no distrae ni tapa el botón de pagar.
   const hiddenHere = pathname?.startsWith("/checkout") || pathname?.startsWith("/carrito");
-  if (closed || hiddenHere || items.length === 0) return null;
+  if (hiddenHere || items.length === 0) return null;
   const item = items[index % items.length];
 
-  function close() {
-    setClosed(true);
-    try { sessionStorage.setItem(DISMISS_KEY, "1"); } catch { /* sin storage */ }
+  function setMin(value: boolean) {
+    setMinimized(value);
+    try {
+      if (value) sessionStorage.setItem(DISMISS_KEY, "1");
+      else sessionStorage.removeItem(DISMISS_KEY);
+    } catch { /* sin storage */ }
+  }
+
+  if (minimized) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMin(false)}
+        aria-label={`Ver promoción: ${item.title}`}
+        title={item.title}
+        className={`fixed bottom-5 left-4 z-30 grid h-12 w-12 place-items-center overflow-hidden rounded-full shadow-lg ring-2 ring-white transition-all duration-500 hover:scale-105 ${
+          shown ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        style={{ backgroundColor: item.bg || "#821f40", color: item.fg || "#ffffff" }}
+      >
+        {item.image ? (
+          <Image src={item.image} alt="" fill sizes="48px" className="object-cover" />
+        ) : (
+          <Percent className="h-5 w-5" />
+        )}
+        {items.length > 1 && (
+          <span className="absolute -right-0.5 -top-0.5 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-bold text-ink shadow">
+            {items.length}
+          </span>
+        )}
+      </button>
+    );
   }
 
   return (
     <div
       aria-live="polite"
-      className={`fixed bottom-4 left-3 right-[5.5rem] z-30 transition-all duration-700 ease-out md:left-1/2 md:right-auto md:w-[min(560px,calc(100%-14rem))] md:-translate-x-1/2 ${
+      className={`fixed bottom-4 left-3 right-[5.5rem] z-30 transition-all duration-700 ease-out md:left-1/2 md:right-auto md:w-[min(600px,calc(100%-14rem))] md:-translate-x-1/2 ${
         shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"
       }`}
     >
       <div key={item.id || index} className="rounded-xl opacity-95 shadow-lg">
-        <PromoCard item={item} onClose={close} />
+        <PromoCard item={item} onClose={() => setMin(true)} />
       </div>
     </div>
   );
