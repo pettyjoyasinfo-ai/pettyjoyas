@@ -375,11 +375,44 @@ export function usePublicSettings() {
 }
 
 // ─────────── Media upload ───────────
+/**
+ * Las fotos de celular suelen pesar 5–15 MB y el servidor acepta hasta 10 MB: si la imagen es
+ * pesada o muy grande, se achica en el navegador (lado mayor 2400 px) antes de subirla. El
+ * servidor igual la vuelve a optimizar a WebP de 1600 px, así que no se pierde calidad visible.
+ * Si el navegador no puede leerla (ej. HEIC en Chrome), se manda tal cual.
+ */
+async function shrinkForUpload(file: File): Promise<File> {
+  const MAX_SIDE = 2400;
+  if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size <= 4 * 1024 * 1024) {
+      bitmap.close();
+      return file;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    // PNG puede tener transparencia (ej. "Quitar fondo"): se mantiene con WebP; el resto va en JPEG.
+    const type = file.type === "image/png" || file.type === "image/webp" ? "image/webp" : "image/jpeg";
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.88));
+    if (!blob || blob.size >= file.size) return file;
+    const ext = blob.type === "image/webp" ? "webp" : blob.type === "image/png" ? "png" : "jpg";
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + "." + ext, { type: blob.type });
+  } catch {
+    return file;
+  }
+}
+
 export function useUploadMedia(folder?: "hero" | "products" | "variants" | "categories") {
   return useMutation({
-    mutationFn: async (file: File): Promise<{ url: string }> => {
+    mutationFn: async (original: File): Promise<{ url: string }> => {
       const { API_URL, ADMIN_TOKEN_KEY } = await import("@/lib/api/client");
       const bearer = typeof window !== "undefined" ? localStorage.getItem(ADMIN_TOKEN_KEY) : null;
+      const file = await shrinkForUpload(original);
       const form = new FormData();
       form.append("file", file);
       if (folder) form.append("folder", folder);
@@ -391,7 +424,14 @@ export function useUploadMedia(folder?: "hero" | "products" | "variants" | "cate
         },
         body: form,
       });
-      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+      if (!res.ok) {
+        // Mensaje entendible para el panel (antes solo decía "Upload failed: 422").
+        if (res.status === 401) throw new Error("Tu sesión venció. Volvé a iniciar sesión y probá de nuevo.");
+        if (res.status === 413 || res.status === 422) {
+          throw new Error("No se pudo subir esa imagen: tiene que ser JPG, PNG o WebP de hasta 10 MB.");
+        }
+        throw new Error(`No se pudo subir la imagen (error ${res.status}). Probá de nuevo.`);
+      }
       return res.json();
     },
   });

@@ -55,13 +55,14 @@ function SlideRow({
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="absolute inset-0 grid place-items-center bg-ink/0 opacity-0 transition group-hover:bg-ink/50 group-hover:opacity-100"
+            className="absolute inset-0 flex items-end justify-center bg-ink/0 pb-1.5 transition group-hover:bg-ink/40"
             aria-label="Cambiar imagen"
           >
+            {/* Siempre visible: en el celular no hay "pasar el mouse". */}
             {uploading ? (
-              <Spinner className="text-white" />
+              <span className="mb-auto mt-auto"><Spinner className="text-white" /></span>
             ) : (
-              <span className="rounded-full bg-white/90 px-2 py-1 text-[10px] text-ink">Cambiar</span>
+              <span className="rounded-full bg-white/90 px-2 py-1 text-[10px] font-medium text-ink shadow">Cambiar</span>
             )}
           </button>
         </div>
@@ -185,6 +186,12 @@ export function AppearanceHero() {
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [bgStatus, setBgStatus] = useState<Record<number, string>>({});
   const [bgError, setBgError] = useState("");
+  const [error, setError] = useState("");
+  // Cambios de texto/orden todavía no guardados (las imágenes se guardan solas al subirlas).
+  const [dirty, setDirty] = useState(false);
+  // Última versión de los slides: la subida tarda y mientras tanto pueden editar textos.
+  const slidesRef = useRef(slides);
+  useEffect(() => { slidesRef.current = slides; }, [slides]);
 
   useEffect(() => {
     if (data?.hero?.slides) setSlides(data.hero.slides);
@@ -192,9 +199,39 @@ export function AppearanceHero() {
 
   function update(i: number, patch: Partial<HeroSlide>) {
     setSlides((s) => s.map((sl, idx) => (idx === i ? { ...sl, ...patch } : sl)));
+    setDirty(true);
+  }
+
+  /** Guarda los slides en el servidor. Devuelve false (y muestra el error) si no se pudo. */
+  async function persist(next: HeroSlide[]): Promise<boolean> {
+    setError("");
+    try {
+      await save.mutateAsync({ hero: { slides: next.filter((s) => s.title.trim() && s.image.trim()) } });
+      setDirty(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      return true;
+    } catch (e: any) {
+      setError(e?.message ? `No se pudo guardar: ${e.message}` : "No se pudo guardar. Probá de nuevo.");
+      return false;
+    }
+  }
+
+  /** Pone la imagen nueva en el slide y la guarda enseguida (antes había que acordarse de "Guardar"). */
+  async function setImageAndSave(i: number, url: string) {
+    const next = slidesRef.current.map((sl, idx) => (idx === i ? { ...sl, image: url } : sl));
+    setSlides(next);
+    if (!next[i].title.trim()) {
+      // Sin título el slide no se puede guardar: queda la imagen puesta y se pide completar.
+      setDirty(true);
+      setError(`El slide ${i + 1} necesita un título para guardarse. Completalo y tocá "Guardar slides".`);
+      return;
+    }
+    await persist(next);
   }
   function remove(i: number) {
     setSlides((s) => s.filter((_, idx) => idx !== i));
+    setDirty(true);
   }
   function moveUp(i: number) {
     if (i === 0) return;
@@ -203,6 +240,7 @@ export function AppearanceHero() {
       [a[i - 1], a[i]] = [a[i], a[i - 1]];
       return a;
     });
+    setDirty(true);
   }
   function moveDown(i: number) {
     setSlides((s) => {
@@ -211,19 +249,24 @@ export function AppearanceHero() {
       [a[i], a[i + 1]] = [a[i + 1], a[i]];
       return a;
     });
+    setDirty(true);
   }
   function addSlide() {
     setSlides((s) => [
       ...s,
       { title: "", image: "", eyebrow: "", href: "/tienda", enabled: true },
     ]);
+    setDirty(true);
   }
 
   async function handleUpload(i: number, file: File) {
     setUploadingIdx(i);
+    setError("");
     try {
       const { url } = await upload.mutateAsync(file);
-      update(i, { image: url });
+      await setImageAndSave(i, url);
+    } catch (e: any) {
+      setError(e?.message ?? "No se pudo subir la imagen. Probá de nuevo.");
     } finally {
       setUploadingIdx(null);
     }
@@ -240,7 +283,7 @@ export function AppearanceHero() {
       setBgStatus((s) => ({ ...s, [i]: "Subiendo…" }));
       const png = new File([blob], "sin-fondo.png", { type: "image/png" });
       const { url } = await upload.mutateAsync(png);
-      update(i, { image: url });
+      await setImageAndSave(i, url);
     } catch (e) {
       setBgError("No se pudo quitar el fondo de esa imagen. Probá con otra o subila tal cual.");
     } finally {
@@ -254,13 +297,7 @@ export function AppearanceHero() {
 
   async function onSave() {
     setSaved(false);
-    await save.mutateAsync({
-      hero: {
-        slides: slides.filter((s) => s.title.trim() && s.image.trim()),
-      },
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    await persist(slides);
   }
 
   if (isLoading) return <Spinner className="text-brand" />;
@@ -279,12 +316,13 @@ export function AppearanceHero() {
       }
     >
       <p className="mb-1 text-xs text-muted">
-        Hacé clic sobre la miniatura para cambiar la imagen (se sube al servidor). Usá las flechas para reordenar.
+        Tocá <strong className="text-ink">Cambiar</strong> en la miniatura para poner otra imagen: se sube y se guarda sola. Los textos y el orden se guardan con <strong className="text-ink">Guardar slides</strong>.
       </p>
       <p className="mb-4 text-xs text-muted">
         <strong className="text-ink">Quitar fondo:</strong> elegí una foto y el sistema le saca el fondo automáticamente (queda en PNG transparente). Funciona mejor con una figura clara sobre un fondo simple. La primera vez puede tardar unos segundos.
       </p>
       {bgError && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{bgError}</p>}
+      {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
       <div className="flex flex-col gap-3">
         {slides.map((slide, i) => (
           <SlideRow
@@ -318,6 +356,7 @@ export function AppearanceHero() {
             <Check className="h-4 w-4" /> Guardado
           </span>
         )}
+        {!saved && dirty && <span className="text-xs text-amber-700">Tenés cambios sin guardar</span>}
       </div>
     </Card>
   );
