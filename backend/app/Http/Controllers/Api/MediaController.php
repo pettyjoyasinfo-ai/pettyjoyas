@@ -3,22 +3,28 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ImageToWebp;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class MediaController extends Controller
 {
     /**
-     * Sube un archivo de imagen al storage público, lo convierte a WebP optimizado y devuelve su URL.
+     * Sube una imagen al storage público y la guarda SIEMPRE como WebP optimizado (máx. 1600 px).
+     * Acepta cualquier formato habitual (JPG, PNG, WebP, GIF, BMP, HEIC de iPhone, AVIF, TIFF) de
+     * hasta 25 MB: el límite es para el original, el WebP final pesa unos cientos de KB.
      * POST /media/upload  (autenticado)
-     * Body: multipart/form-data  — campo "file" (imagen, máx 10 MB)
+     * Body: multipart/form-data  — campo "file"
      */
     public function upload(Request $request)
     {
         $request->validate([
-            'file' => ['required', 'file', 'image', 'max:10240'],
+            'file' => ['required', 'file', 'max:25600', 'mimes:'.implode(',', ImageToWebp::ACCEPTED)],
             'folder' => ['nullable', 'string'],
+        ], [
+            'file.max' => 'La imagen pesa más de 25 MB.',
+            'file.mimes' => 'Ese archivo no es una imagen compatible (JPG, PNG, WebP, HEIC, AVIF, GIF, TIFF o BMP).',
         ]);
 
         // Carpeta destino acotada a una lista blanca (evita path traversal).
@@ -39,70 +45,17 @@ class MediaController extends Controller
         $relativePath = 'uploads/' . $folder . '/' . $name;
 
         if (! Storage::disk('public')->exists($relativePath)) {
-            self::saveAsWebp($file, $relativePath);
+            try {
+                ImageToWebp::convert($file->getRealPath(), Storage::disk('public')->path($relativePath));
+            } catch (\RuntimeException) {
+                throw ValidationException::withMessages([
+                    'file' => 'No se pudo convertir esa imagen. Probá exportarla como JPG o PNG.',
+                ]);
+            }
         }
 
         return response()->json([
             'url' => Storage::disk('public')->url($relativePath),
         ], 201);
-    }
-
-    /**
-     * Convierte la imagen subida a formato WebP optimizado (máx 1600px de ancho, calidad 82%).
-     */
-    public static function saveAsWebp(UploadedFile $uploadedFile, string $relativePath, int $quality = 82, int $maxWidth = 1600): void
-    {
-        $filePath = $uploadedFile->getRealPath();
-        $mime = $uploadedFile->getMimeType();
-
-        $image = match ($mime) {
-            'image/jpeg', 'image/jpg' => @imagecreatefromjpeg($filePath),
-            'image/png' => @imagecreatefrompng($filePath),
-            'image/webp' => @imagecreatefromwebp($filePath),
-            'image/gif' => @imagecreatefromgif($filePath),
-            default => false,
-        };
-
-        if (!$image) {
-            // Fallback si no se pudo procesar con GD: guardar original
-            $uploadedFile->storeAs(dirname($relativePath), basename($relativePath), 'public');
-            return;
-        }
-
-        if (!imageistruecolor($image)) {
-            imagepalettetotruecolor($image);
-        }
-
-        if ($mime === 'image/png') {
-            imagealphablending($image, true);
-            imagesavealpha($image, true);
-        }
-
-        $width = imagesx($image);
-        $height = imagesy($image);
-
-        if ($width > $maxWidth) {
-            $newWidth = $maxWidth;
-            $newHeight = (int) round(($height / $width) * $newWidth);
-            $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
-
-            if ($mime === 'image/png' || $mime === 'image/webp') {
-                imagealphablending($resizedImage, false);
-                imagesavealpha($resizedImage, true);
-            }
-
-            imagecopyresampled($resizedImage, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-            imagedestroy($image);
-            $image = $resizedImage;
-        }
-
-        $fullPath = Storage::disk('public')->path($relativePath);
-        $dir = dirname($fullPath);
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0755, true);
-        }
-
-        imagewebp($image, $fullPath, $quality);
-        imagedestroy($image);
     }
 }

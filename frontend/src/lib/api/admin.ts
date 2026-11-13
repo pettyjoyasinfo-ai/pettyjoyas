@@ -376,8 +376,8 @@ export function usePublicSettings() {
 
 // ─────────── Media upload ───────────
 /**
- * Las fotos de celular suelen pesar 5–15 MB y el servidor acepta hasta 10 MB: si la imagen es
- * pesada o muy grande, se achica en el navegador (lado mayor 2400 px) antes de subirla. El
+ * Las fotos de celular suelen pesar 5–15 MB (el servidor acepta hasta 25 MB): si la imagen es
+ * pesada o muy grande, se achica en el navegador (lado mayor 2400 px) para que suba más rápido. El
  * servidor igual la vuelve a optimizar a WebP de 1600 px, así que no se pierde calidad visible.
  * Si el navegador no puede leerla (ej. HEIC en Chrome), se manda tal cual.
  */
@@ -427,8 +427,11 @@ export function useUploadMedia(folder?: "hero" | "products" | "variants" | "cate
       if (!res.ok) {
         // Mensaje entendible para el panel (antes solo decía "Upload failed: 422").
         if (res.status === 401) throw new Error("Tu sesión venció. Volvé a iniciar sesión y probá de nuevo.");
-        if (res.status === 413 || res.status === 422) {
-          throw new Error("No se pudo subir esa imagen: tiene que ser JPG, PNG o WebP de hasta 10 MB.");
+        if (res.status === 413) throw new Error("La imagen es demasiado pesada (máximo 25 MB).");
+        if (res.status === 422) {
+          const body = await res.json().catch(() => null);
+          const msg = body?.errors?.file?.[0] ?? body?.message;
+          throw new Error(msg || "No se pudo subir esa imagen. Probá con un JPG o PNG.");
         }
         throw new Error(`No se pudo subir la imagen (error ${res.status}). Probá de nuevo.`);
       }
