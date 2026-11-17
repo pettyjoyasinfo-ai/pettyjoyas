@@ -5,7 +5,8 @@ import { Check, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { Card, FieldLabel, Toggle } from "@/components/admin/ui";
 import { Spinner } from "@/components/ui/spinner";
 import { PromoCard, isPromoActive } from "@/components/shop/promo-strip";
-import { useAdminCategories, useSettings, useUpdateSettings, useUploadMedia } from "@/lib/api/admin";
+import { useSettings, useUpdateSettings, useUploadMedia } from "@/lib/api/admin";
+import { useLinkDestinations } from "@/components/admin/link-destinations";
 import { DEFAULT_SETTINGS, type PromoItem, type PromoSettings } from "@/lib/data/settings";
 
 const inp = "rounded-xl border border-line px-3.5 py-2.5 text-sm outline-none focus:border-brand";
@@ -35,21 +36,8 @@ export function AppearancePromo() {
   const { data, isLoading } = useSettings();
   const save = useUpdateSettings();
   const upload = useUploadMedia("hero");
-  const { data: categories = [] } = useAdminCategories();
   // Destinos listos para el botón: así no hay que escribir el link a mano.
-  const destinations: { label: string; href: string }[] = [
-    { label: "Toda la tienda", href: "/tienda" },
-    { label: "Productos en oferta", href: "/tienda?oferta=1" },
-    ...categories
-      .filter((c: any) => c.slug)
-      .map((c: any) => ({
-        label: c.parentSlug
-          ? `${categories.find((p: any) => p.slug === c.parentSlug)?.name ?? c.parentSlug} › ${c.name}`
-          : c.name,
-        href: `/tienda?categoria=${c.slug}`,
-      }))
-      .sort((a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label, "es")),
-  ];
+  const destinations = useLinkDestinations();
 
   const [promo, setPromo] = useState<PromoSettings>(DEFAULT_SETTINGS.promo);
   const [saved, setSaved] = useState(false);

@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronUp, Plus, Scissors, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ImagePlus, Monitor, Plus, Smartphone, Trash2 } from "lucide-react";
 import { Card, FieldLabel, Toggle } from "@/components/admin/ui";
 import { Spinner } from "@/components/ui/spinner";
+import { useLinkDestinations } from "@/components/admin/link-destinations";
 import { useSettings, useUpdateSettings, useUploadMedia } from "@/lib/api/admin";
-import { DEFAULT_SETTINGS, type HeroSlide } from "@/lib/data/settings";
-import { removeImageBackground } from "@/lib/remove-bg";
+import { DEFAULT_SETTINGS, HERO_ASPECTS, type HeroAspect, type HeroSlide } from "@/lib/data/settings";
 
 const inp =
   "w-full rounded-xl border border-line px-3.5 py-2.5 text-sm outline-none focus:border-brand";
@@ -15,61 +15,62 @@ function SlideRow({
   slide,
   index,
   total,
+  ratio,
   uploading,
-  bgStatus,
   onUpdate,
   onRemove,
   onMoveUp,
   onMoveDown,
   onUpload,
-  onRemoveBg,
 }: {
   slide: HeroSlide;
   index: number;
   total: number;
+  ratio: string;
   uploading: boolean;
-  bgStatus: string | null;
   onUpdate: (patch: Partial<HeroSlide>) => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onUpload: (file: File) => void;
-  onRemoveBg: (file: File) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const bgFileRef = useRef<HTMLInputElement>(null);
-  const busy = uploading || bgStatus !== null;
+  const destinations = useLinkDestinations();
+  const href = slide.href ?? "";
+  const isPreset = destinations.some((d) => d.href === href);
 
   return (
-    <div className="flex gap-4 rounded-2xl border border-line p-4">
-      {/* Miniatura + upload */}
-      <div className="w-20 shrink-0">
-        <div className="group relative aspect-[3/4] overflow-hidden rounded-xl bg-stone-bg [background-image:linear-gradient(45deg,#eee_25%,transparent_25%),linear-gradient(-45deg,#eee_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#eee_75%),linear-gradient(-45deg,transparent_75%,#eee_75%)] [background-position:0_0,0_5px,5px_-5px,-5px_0] [background-size:10px_10px]">
+    <div className="flex flex-col gap-3 rounded-2xl border border-line p-4 sm:flex-row">
+      {/* Miniatura con el mismo formato que en la tienda */}
+      <div className="w-full shrink-0 sm:w-48">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+          aria-label="Cambiar imagen"
+          className="group relative block w-full overflow-hidden rounded-xl bg-stone-bg"
+          style={{ aspectRatio: ratio }}
+        >
           {slide.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={slide.image} alt="" className="h-full w-full object-cover object-top" />
+            <img src={slide.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
-            <span className="grid h-full w-full place-items-center bg-stone-bg text-[10px] text-muted">Sin imagen</span>
+            <span className="absolute inset-0 grid place-items-center text-xs text-muted">
+              <span className="flex flex-col items-center gap-1"><ImagePlus className="h-5 w-5" /> Subir imagen</span>
+            </span>
           )}
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={busy}
-            className="absolute inset-0 flex items-end justify-center bg-ink/0 pb-1.5 transition group-hover:bg-ink/40"
-            aria-label="Cambiar imagen"
-          >
-            {/* Siempre visible: en el celular no hay "pasar el mouse". */}
+          <span className="absolute inset-x-0 bottom-0 flex justify-center pb-1.5">
             {uploading ? (
-              <span className="mb-auto mt-auto"><Spinner className="text-white" /></span>
+              <Spinner className="text-white" />
             ) : (
-              <span className="rounded-full bg-white/90 px-2 py-1 text-[10px] font-medium text-ink shadow">Cambiar</span>
+              slide.image && <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-ink shadow">Cambiar</span>
             )}
-          </button>
-        </div>
+          </span>
+        </button>
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -77,65 +78,42 @@ function SlideRow({
             e.target.value = "";
           }}
         />
-        {/* Quitar fondo (procesa en el navegador y sube el PNG transparente) */}
-        <button
-          type="button"
-          onClick={() => bgFileRef.current?.click()}
-          disabled={busy}
-          className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border border-line px-1.5 py-1 text-[10px] text-ink transition hover:border-brand hover:text-brand disabled:opacity-50"
-          title="Elegí una imagen y le quito el fondo automáticamente"
-        >
-          <Scissors className="h-3 w-3" /> Quitar fondo
-        </button>
-        <input
-          ref={bgFileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onRemoveBg(f);
-            e.target.value = "";
-          }}
-        />
-        {bgStatus && <p className="mt-1 text-center text-[9px] leading-tight text-brand">{bgStatus}</p>}
-        <p className="mt-1 text-center text-[10px] text-muted">Slide {index + 1}</p>
+        <p className="mt-1 text-center text-[11px] text-muted">Imagen {index + 1}</p>
       </div>
 
-      {/* Campos */}
       <div className="flex flex-1 flex-col gap-2.5">
-        <div className="grid grid-cols-2 gap-2">
-          <label className="flex flex-col gap-1">
-            <FieldLabel label="Bajada (cursiva)" optional />
-            <input
-              value={slide.eyebrow ?? ""}
-              onChange={(e) => onUpdate({ eyebrow: e.target.value })}
-              placeholder="El original"
-              className={inp}
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <FieldLabel label="Título" required />
-            <input
-              value={slide.title}
-              onChange={(e) => onUpdate({ title: e.target.value })}
-              placeholder="Brillá siempre"
-              className={inp}
-            />
-          </label>
-        </div>
-
         <label className="flex flex-col gap-1">
-          <FieldLabel label="Enlace del botón" optional />
+          <FieldLabel label="Al tocarla lleva a" optional />
+          <select
+            value={isPreset ? href : href ? "__otro" : ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "__otro") onUpdate({ href: !isPreset && href ? href : "https://" });
+              else onUpdate({ href: v || undefined });
+            }}
+            className={inp}
+          >
+            <option value="">No lleva a ningún lado</option>
+            {destinations.map((d) => (
+              <option key={d.href} value={d.href}>{d.label}</option>
+            ))}
+            <option value="__otro">Otro link…</option>
+          </select>
+        </label>
+        {href && !isPreset && (
+          <input value={href} onChange={(e) => onUpdate({ href: e.target.value })} placeholder="/tienda?q=casio o https://…" className={inp} />
+        )}
+        <label className="flex flex-col gap-1">
+          <FieldLabel label="Descripción de la imagen" optional />
           <input
-            value={slide.href ?? ""}
-            onChange={(e) => onUpdate({ href: e.target.value })}
-            placeholder="/tienda"
+            value={slide.title ?? ""}
+            onChange={(e) => onUpdate({ title: e.target.value })}
+            placeholder="Ej: Anillos de oro 18k (ayuda a Google y a lectores de pantalla)"
             className={inp}
           />
         </label>
 
-        <div className="flex items-center justify-between">
+        <div className="mt-auto flex items-center justify-between">
           <span className="flex items-center gap-2 text-xs text-body">
             Visible
             <button type="button" onClick={() => onUpdate({ enabled: !(slide.enabled ?? true) })} tabIndex={-1}>
@@ -143,30 +121,16 @@ function SlideRow({
             </button>
           </span>
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={onMoveUp}
-              disabled={index === 0}
-              aria-label="Subir slide"
-              className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-ink disabled:opacity-25"
-            >
+            <button type="button" onClick={onMoveUp} disabled={index === 0} aria-label="Subir"
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-ink disabled:opacity-25">
               <ChevronUp className="h-4 w-4" />
             </button>
-            <button
-              type="button"
-              onClick={onMoveDown}
-              disabled={index === total - 1}
-              aria-label="Bajar slide"
-              className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-ink disabled:opacity-25"
-            >
+            <button type="button" onClick={onMoveDown} disabled={index === total - 1} aria-label="Bajar"
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-ink disabled:opacity-25">
               <ChevronDown className="h-4 w-4" />
             </button>
-            <button
-              type="button"
-              onClick={onRemove}
-              aria-label="Eliminar slide"
-              className="grid h-8 w-8 place-items-center rounded-lg text-muted transition hover:text-red-600"
-            >
+            <button type="button" onClick={onRemove} aria-label="Eliminar imagen"
+              className="grid h-8 w-8 place-items-center rounded-lg text-muted transition hover:text-red-600">
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
@@ -176,37 +140,78 @@ function SlideRow({
   );
 }
 
+/** Vista previa: cómo se ven las primeras imágenes visibles en PC (2) y en el celular (1). */
+function Preview({ slides, ratio }: { slides: HeroSlide[]; ratio: string }) {
+  const visible = slides.filter((s) => s.enabled !== false && s.image);
+  if (visible.length === 0) return null;
+  const desktop = visible.slice(0, visible.length >= 2 ? 2 : 1);
+  const cell = (s: HeroSlide, i: number) => (
+    <div key={i} className="relative w-full overflow-hidden bg-stone-bg" style={{ aspectRatio: ratio }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={s.image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+    </div>
+  );
+  return (
+    <div className="mb-5 grid grid-cols-1 gap-4 rounded-2xl bg-stone-bg p-4 md:grid-cols-[1fr_160px]">
+      <div>
+        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted"><Monitor className="h-3.5 w-3.5" /> En PC</p>
+        <div className={`grid overflow-hidden rounded-lg ${desktop.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>{desktop.map(cell)}</div>
+      </div>
+      <div>
+        <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted"><Smartphone className="h-3.5 w-3.5" /> En celular</p>
+        <div className="overflow-hidden rounded-lg">{cell(visible[0], 0)}</div>
+      </div>
+    </div>
+  );
+}
+
 export function AppearanceHero() {
   const { data, isLoading } = useSettings();
   const save = useUpdateSettings();
-  const upload = useUploadMedia();
+  const upload = useUploadMedia("hero");
 
   const [slides, setSlides] = useState<HeroSlide[]>(DEFAULT_SETTINGS.hero.slides);
+  const [aspect, setAspect] = useState<HeroAspect>("4/3");
   const [saved, setSaved] = useState(false);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
-  const [bgStatus, setBgStatus] = useState<Record<number, string>>({});
-  const [bgError, setBgError] = useState("");
   const [error, setError] = useState("");
-  // Cambios de texto/orden todavía no guardados (las imágenes se guardan solas al subirlas).
+  // Cambios todavía no guardados (las imágenes se guardan solas al subirlas).
   const [dirty, setDirty] = useState(false);
-  // Última versión de los slides: la subida tarda y mientras tanto pueden editar textos.
+  // Última versión: la subida tarda y mientras tanto pueden editar otras cosas.
   const slidesRef = useRef(slides);
   useEffect(() => { slidesRef.current = slides; }, [slides]);
+  const aspectRef = useRef(aspect);
+  useEffect(() => { aspectRef.current = aspect; }, [aspect]);
 
   useEffect(() => {
     if (data?.hero?.slides) setSlides(data.hero.slides);
+    if (data?.hero?.aspect && data.hero.aspect in HERO_ASPECTS) setAspect(data.hero.aspect as HeroAspect);
   }, [data]);
 
-  function update(i: number, patch: Partial<HeroSlide>) {
-    setSlides((s) => s.map((sl, idx) => (idx === i ? { ...sl, ...patch } : sl)));
+  const ratio = HERO_ASPECTS[aspect].css;
+
+  function change(next: HeroSlide[]) {
+    setSlides(next);
     setDirty(true);
   }
+  function update(i: number, patch: Partial<HeroSlide>) {
+    change(slides.map((sl, idx) => (idx === i ? { ...sl, ...patch } : sl)));
+  }
+  function move(i: number, delta: number) {
+    const j = i + delta;
+    if (j < 0 || j >= slides.length) return;
+    const a = [...slides];
+    [a[i], a[j]] = [a[j], a[i]];
+    change(a);
+  }
 
-  /** Guarda los slides en el servidor. Devuelve false (y muestra el error) si no se pudo. */
-  async function persist(next: HeroSlide[]): Promise<boolean> {
+  /** Guarda en el servidor. Devuelve false (y muestra el error) si no se pudo. */
+  async function persist(next: HeroSlide[], nextAspect: HeroAspect): Promise<boolean> {
     setError("");
     try {
-      await save.mutateAsync({ hero: { slides: next.filter((s) => s.title.trim() && s.image.trim()) } });
+      await save.mutateAsync({
+        hero: { aspect: nextAspect, slides: next.filter((s) => s.image?.trim()) },
+      });
       setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -217,54 +222,15 @@ export function AppearanceHero() {
     }
   }
 
-  /** Pone la imagen nueva en el slide y la guarda enseguida (antes había que acordarse de "Guardar"). */
-  async function setImageAndSave(i: number, url: string) {
-    const next = slidesRef.current.map((sl, idx) => (idx === i ? { ...sl, image: url } : sl));
-    setSlides(next);
-    if (!next[i].title.trim()) {
-      // Sin título el slide no se puede guardar: queda la imagen puesta y se pide completar.
-      setDirty(true);
-      setError(`El slide ${i + 1} necesita un título para guardarse. Completalo y tocá "Guardar slides".`);
-      return;
-    }
-    await persist(next);
-  }
-  function remove(i: number) {
-    setSlides((s) => s.filter((_, idx) => idx !== i));
-    setDirty(true);
-  }
-  function moveUp(i: number) {
-    if (i === 0) return;
-    setSlides((s) => {
-      const a = [...s];
-      [a[i - 1], a[i]] = [a[i], a[i - 1]];
-      return a;
-    });
-    setDirty(true);
-  }
-  function moveDown(i: number) {
-    setSlides((s) => {
-      if (i >= s.length - 1) return s;
-      const a = [...s];
-      [a[i], a[i + 1]] = [a[i + 1], a[i]];
-      return a;
-    });
-    setDirty(true);
-  }
-  function addSlide() {
-    setSlides((s) => [
-      ...s,
-      { title: "", image: "", eyebrow: "", href: "/tienda", enabled: true },
-    ]);
-    setDirty(true);
-  }
-
   async function handleUpload(i: number, file: File) {
     setUploadingIdx(i);
     setError("");
     try {
       const { url } = await upload.mutateAsync(file);
-      await setImageAndSave(i, url);
+      // Se guarda enseguida: no hace falta acordarse de "Guardar".
+      const next = slidesRef.current.map((sl, idx) => (idx === i ? { ...sl, image: url } : sl));
+      setSlides(next);
+      await persist(next, aspectRef.current);
     } catch (e: any) {
       setError(e?.message ?? "No se pudo subir la imagen. Probá de nuevo.");
     } finally {
@@ -272,84 +238,70 @@ export function AppearanceHero() {
     }
   }
 
-  // Quita el fondo en el navegador (sin IA en el servidor, sin costo) y sube el PNG.
-  async function handleRemoveBg(i: number, file: File) {
-    setBgError("");
-    setBgStatus((s) => ({ ...s, [i]: "Iniciando…" }));
-    try {
-      const blob = await removeImageBackground(file, (label) =>
-        setBgStatus((s) => ({ ...s, [i]: label })),
-      );
-      setBgStatus((s) => ({ ...s, [i]: "Subiendo…" }));
-      const png = new File([blob], "sin-fondo.png", { type: "image/png" });
-      const { url } = await upload.mutateAsync(png);
-      await setImageAndSave(i, url);
-    } catch (e) {
-      setBgError("No se pudo quitar el fondo de esa imagen. Probá con otra o subila tal cual.");
-    } finally {
-      setBgStatus((s) => {
-        const next = { ...s };
-        delete next[i];
-        return next;
-      });
-    }
-  }
-
-  async function onSave() {
-    setSaved(false);
-    await persist(slides);
-  }
-
   if (isLoading) return <Spinner className="text-brand" />;
 
   return (
     <Card
-      title="Slides del hero"
+      title="Imágenes del inicio (carrusel principal)"
       action={
         <button
           type="button"
-          onClick={addSlide}
+          onClick={() => change([...slides, { id: `hero-${Date.now()}`, title: "", image: "", href: "/tienda", enabled: true }])}
           className="flex items-center gap-1.5 text-xs font-medium text-brand"
         >
-          <Plus className="h-3.5 w-3.5" /> Agregar slide
+          <Plus className="h-3.5 w-3.5" /> Agregar imagen
         </button>
       }
     >
-      <p className="mb-1 text-xs text-muted">
-        Tocá <strong className="text-ink">Cambiar</strong> en la miniatura para poner otra imagen: se sube y se guarda sola. Los textos y el orden se guardan con <strong className="text-ink">Guardar slides</strong>.
+      <p className="mb-3 text-xs text-muted">
+        Imágenes completas, sin texto encima (si querés texto, ponelo en la imagen). En PC se ven{" "}
+        <strong className="text-ink">2 lado a lado</strong> y en el celular <strong className="text-ink">1 por vez</strong>.
+        Al subir una imagen se guarda sola; el orden, los links y el formato se guardan con <strong className="text-ink">Guardar</strong>.
       </p>
-      <p className="mb-4 text-xs text-muted">
-        <strong className="text-ink">Quitar fondo:</strong> elegí una foto y el sistema le saca el fondo automáticamente (queda en PNG transparente). Funciona mejor con una figura clara sobre un fondo simple. La primera vez puede tardar unos segundos.
-      </p>
-      {bgError && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{bgError}</p>}
+
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          <FieldLabel label="Formato de las imágenes" />
+          <select
+            value={aspect}
+            onChange={(e) => { setAspect(e.target.value as HeroAspect); setDirty(true); }}
+            className={`${inp} w-60`}
+          >
+            {(Object.keys(HERO_ASPECTS) as HeroAspect[]).map((k) => (
+              <option key={k} value={k}>{HERO_ASPECTS[k].label}</option>
+            ))}
+          </select>
+        </label>
+        <p className="pb-2.5 text-xs text-muted">
+          Tamaño recomendado: <strong className="text-ink">{HERO_ASPECTS[aspect].size}</strong>. Si la imagen tiene otra forma, se recorta un poco por los bordes.
+        </p>
+      </div>
+
+      <Preview slides={slides} ratio={ratio} />
+
       {error && <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+
       <div className="flex flex-col gap-3">
         {slides.map((slide, i) => (
           <SlideRow
-            key={i}
+            key={slide.id ?? i}
             slide={slide}
             index={i}
             total={slides.length}
+            ratio={ratio}
             uploading={uploadingIdx === i}
-            bgStatus={bgStatus[i] ?? null}
             onUpdate={(patch) => update(i, patch)}
-            onRemove={() => remove(i)}
-            onMoveUp={() => moveUp(i)}
-            onMoveDown={() => moveDown(i)}
+            onRemove={() => change(slides.filter((_, idx) => idx !== i))}
+            onMoveUp={() => move(i, -1)}
+            onMoveDown={() => move(i, 1)}
             onUpload={(file) => handleUpload(i, file)}
-            onRemoveBg={(file) => handleRemoveBg(i, file)}
           />
         ))}
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={save.isPending}
-          className="btn-brand px-5 py-2.5 text-xs"
-        >
-          {save.isPending ? <Spinner /> : "Guardar slides"}
+        <button type="button" onClick={() => persist(slides, aspect)} disabled={save.isPending} className="btn-brand px-5 py-2.5 text-xs">
+          {save.isPending ? <Spinner /> : "Guardar"}
         </button>
         {saved && (
           <span className="flex items-center gap-1.5 text-sm text-green-700">

@@ -112,8 +112,9 @@ export function SiteHeader({ initialCategories }: { initialCategories?: Category
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
 
-  const isHome = pathname === "/";
-  const transparent = isHome && !scrolled && !searchOpen;
+  // El hero del inicio ahora son fotos completas (no un fondo de color): el header va
+  // sólido siempre, si no el logo y el menú blancos se pierden sobre fotos claras.
+  const transparent = false;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -145,7 +146,6 @@ export function SiteHeader({ initialCategories }: { initialCategories?: Category
     <header
       className={cn(
         "sticky top-0 z-40 transition-all duration-300",
-        isHome && "-mb-20",
         transparent
           ? "border-b border-white/15 bg-transparent"
           : scrolled

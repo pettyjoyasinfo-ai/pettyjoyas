@@ -1,106 +1,88 @@
 "use client";
 
 import { useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Swiper as SwiperInstance } from "swiper";
-import type { HeroSlide } from "@/lib/data/settings";
+import { HERO_ASPECTS, type HeroAspect, type HeroSlide } from "@/lib/data/settings";
 
-export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
+/**
+ * Hero del inicio: carrusel de imágenes completas (sin textos ni fondo encima; si quieren
+ * texto, va dentro de la imagen). En PC se ven 2 imágenes lado a lado y en el celular 1.
+ * Todas con el mismo formato (se elige en el panel) para que no se recorten de forma rara.
+ */
+export function HeroSlider({ slides, aspect = "4/3" }: { slides: HeroSlide[]; aspect?: HeroAspect }) {
   const swiperRef = useRef<SwiperInstance | null>(null);
-  const visible = slides.filter((s) => s.enabled !== false);
+  const visible = slides.filter((s) => s.enabled !== false && s.image?.trim());
+  if (visible.length === 0) return null;
+
+  // Con una sola imagen, en PC ocupa todo el ancho (no queda media pantalla vacía).
+  const perViewDesktop = visible.length >= 2 ? 2 : 1;
+  const ratio = HERO_ASPECTS[aspect]?.css ?? "4 / 3";
+  const showArrows = visible.length > 1;
 
   return (
-    <section className="hero-slider relative overflow-hidden bg-khaki">
+    <section className="hero-slider relative overflow-hidden bg-stone-bg">
       <Swiper
         modules={[Autoplay, Pagination]}
         speed={700}
-        autoplay={{ delay: 6000, disableOnInteraction: false }}
-        pagination={{ clickable: true }}
-        loop
+        autoplay={visible.length > 1 ? { delay: 6000, disableOnInteraction: false } : false}
+        pagination={visible.length > 1 ? { clickable: true } : false}
+        // "rewind" en vez de "loop": funciona con cualquier cantidad de imágenes (loop pide un mínimo).
+        rewind
+        slidesPerView={1}
+        breakpoints={{ 768: { slidesPerView: perViewDesktop, slidesPerGroup: perViewDesktop } }}
         onSwiper={(swiper) => { swiperRef.current = swiper; }}
       >
-        {visible.map((slide, i) => (
-          <SwiperSlide key={slide.id ?? i}>
-            <div className="relative flex min-h-[520px] items-end overflow-hidden bg-khaki pb-16 sm:min-h-[680px] sm:items-center sm:pb-10 lg:min-h-[800px] xl:min-h-[880px]">
-
-              {/* Aro decorativo — más visible en mobile, posicionado a la derecha con la imagen */}
-              <span className="pointer-events-none absolute -bottom-[160px] right-[-80px] h-[480px] w-[480px] rounded-full border border-white/30 sm:hidden" />
-              <span className="pointer-events-none absolute -bottom-[180px] right-[-60px] h-[380px] w-[380px] rounded-full border border-white/15 sm:hidden" />
-              {/* Aros desktop */}
-              <span className="pointer-events-none absolute -bottom-[210px] left-1/2 hidden h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-white/[0.04] sm:block" />
-              <span className="pointer-events-none absolute -bottom-[249px] left-[46%] hidden h-[800px] w-[800px] -translate-x-1/2 rounded-full border border-white/20 sm:block" />
-
-              {/* Imagen del modelo */}
-              <div className="absolute bottom-0 right-0 h-[78%] w-[62%] sm:left-1/2 sm:right-auto sm:h-[80%] sm:w-[min(92vw,680px)] sm:-translate-x-[40%] lg:h-[88%]">
-                {slide.image.startsWith("http") ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={slide.image}
-                    alt={slide.title}
-                    className="h-full w-full object-contain object-bottom"
-                  />
+        {visible.map((slide, i) => {
+          const img = (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={slide.image}
+              alt={slide.title || "Petty Joyas"}
+              loading={i < 2 ? "eager" : "lazy"}
+              fetchPriority={i < 2 ? "high" : "auto"}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          );
+          return (
+            <SwiperSlide key={slide.id ?? i}>
+              <div className="relative w-full" style={{ aspectRatio: ratio }}>
+                {slide.href ? (
+                  <Link href={slide.href} prefetch={false} aria-label={slide.title || "Ver más"} className="block h-full w-full">
+                    {img}
+                  </Link>
                 ) : (
-                  <Image
-                    src={slide.image}
-                    alt={slide.title}
-                    fill
-                    priority={i === 0}
-                    sizes="(max-width: 640px) 62vw, (max-width: 1024px) 92vw, 680px"
-                    className="object-contain object-bottom"
-                  />
+                  img
                 )}
               </div>
-
-              {/* Gradiente izquierdo — solo mobile */}
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-[58%] bg-gradient-to-r from-khaki via-khaki/80 to-transparent sm:hidden" />
-
-              {/* Contenido textual */}
-              <div className="container-px relative z-10 w-full pb-2 sm:pb-0">
-                <div className="max-w-[52%] sm:max-w-xl">
-                  {slide.eyebrow && (
-                    <span className="font-script text-2xl text-white sm:text-3xl sm:text-[40px]">
-                      {slide.eyebrow}
-                    </span>
-                  )}
-                  <h1 className="mt-2 mb-5 font-sans text-[38px] font-normal leading-[0.95] tracking-[-0.03em] text-white sm:mt-3 sm:mb-9 sm:text-[72px] lg:text-[88px] xl:text-[100px]">
-                    {slide.title}
-                  </h1>
-                  <Link
-                    href={slide.href ?? "/tienda"}
-                    className="inline-block border border-white/80 px-6 py-2 text-sm font-medium text-white transition-all duration-300 hover:border-white hover:bg-white hover:text-ink sm:px-8 sm:py-2.5 sm:text-base"
-                  >
-                    Descubrir ahora
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </SwiperSlide>
-        ))}
+            </SwiperSlide>
+          );
+        })}
       </Swiper>
 
-      {/* Flecha anterior — pequeña en mobile (bottom), grande en desktop (center) */}
-      <button
-        type="button"
-        aria-label="Slide anterior"
-        onClick={() => swiperRef.current?.slidePrev()}
-        className="absolute bottom-3 left-3 z-10 grid h-8 w-8 place-items-center rounded-full border border-white/40 text-white/80 transition hover:border-white hover:bg-white hover:text-ink sm:bottom-auto sm:left-4 sm:top-1/2 sm:h-[54px] sm:w-[54px] sm:-translate-y-1/2 lg:left-8"
-      >
-        <ChevronLeft className="h-4 w-4 sm:h-6 sm:w-6" />
-      </button>
-
-      {/* Flecha siguiente */}
-      <button
-        type="button"
-        aria-label="Slide siguiente"
-        onClick={() => swiperRef.current?.slideNext()}
-        className="absolute bottom-3 left-14 z-10 grid h-8 w-8 place-items-center rounded-full border border-white/40 text-white/80 transition hover:border-white hover:bg-white hover:text-ink sm:bottom-auto sm:left-auto sm:right-4 sm:top-1/2 sm:h-[54px] sm:w-[54px] sm:-translate-y-1/2 lg:right-8"
-      >
-        <ChevronRight className="h-4 w-4 sm:h-6 sm:w-6" />
-      </button>
+      {showArrows && (
+        <>
+          <button
+            type="button"
+            aria-label="Anterior"
+            onClick={() => swiperRef.current?.slidePrev()}
+            className="absolute left-3 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-ink shadow-md transition hover:bg-white sm:grid lg:left-5"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Siguiente"
+            onClick={() => swiperRef.current?.slideNext()}
+            className="absolute right-3 top-1/2 z-10 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-ink shadow-md transition hover:bg-white sm:grid lg:right-5"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      )}
     </section>
   );
 }

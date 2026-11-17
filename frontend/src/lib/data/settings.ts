@@ -12,11 +12,20 @@ export type FeatureItem = { icon?: string; title: string; text?: string };
 export type HeroSlide = {
   id?: string;
   eyebrow?: string;
+  /** Descripción de la imagen (texto alternativo); ya no se muestra encima. */
   title: string;
   image: string;
   href?: string;
   enabled?: boolean;
 };
+
+/** Formato de las imágenes del hero: todas iguales para que se vean parejas, lado a lado en PC. */
+export const HERO_ASPECTS = {
+  "16/9": { label: "Horizontal ancho (16:9)", css: "16 / 9", size: "1600 × 900 px" },
+  "4/3": { label: "Horizontal (4:3)", css: "4 / 3", size: "1600 × 1200 px" },
+  "1/1": { label: "Cuadrada (1:1)", css: "1 / 1", size: "1200 × 1200 px" },
+} as const;
+export type HeroAspect = keyof typeof HERO_ASPECTS;
 
 export type BadgeSettings = {
   nuevo: boolean;
@@ -81,7 +90,7 @@ export type PromoSettings = { enabled: boolean; items: PromoItem[] };
 export type SiteSettings = {
   announcement: { enabled: boolean; items: AnnouncementItem[] };
   features: { items: FeatureItem[] };
-  hero: { slides: HeroSlide[] };
+  hero: { slides: HeroSlide[]; aspect?: HeroAspect };
   badges: BadgeSettings;
   banners: { items: BannerItem[] };
   about: AboutSettings;

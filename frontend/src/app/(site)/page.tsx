@@ -39,7 +39,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroSlider slides={settings.hero.slides} />
+      <HeroSlider slides={settings.hero.slides} aspect={settings.hero.aspect} />
       <Features />
       <Banners items={settings.banners.items} />
       <About data={settings.about} />

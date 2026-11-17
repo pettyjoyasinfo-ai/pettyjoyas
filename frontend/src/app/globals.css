@@ -142,14 +142,16 @@
 .hero-slider .swiper-pagination {
   left: 0;
   right: 0;
-  bottom: 26px;
+  bottom: 14px;
   top: auto;
   display: flex;
   justify-content: center;
   gap: 7px;
 }
 .hero-slider .swiper-pagination-bullet {
-  background-color: rgba(255, 255, 255, 0.35);
+  background-color: rgba(255, 255, 255, 0.55);
+  /* Borde suave: los puntos se ven también sobre imágenes claras. */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
   margin: 0 !important;
 }
 .hero-slider .swiper-pagination-bullet-active {
