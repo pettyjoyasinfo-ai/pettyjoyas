@@ -37,6 +37,7 @@ export function HeroSlider({ slides, aspect = "4/3" }: { slides: HeroSlide[]; as
         onSwiper={(swiper) => { swiperRef.current = swiper; }}
       >
         {visible.map((slide, i) => {
+          const hasText = !!(slide.eyebrow?.trim() || slide.title?.trim() || (slide.href && slide.cta?.trim()));
           const img = (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -47,15 +48,39 @@ export function HeroSlider({ slides, aspect = "4/3" }: { slides: HeroSlide[]; as
               className="absolute inset-0 h-full w-full object-cover"
             />
           );
+          // Texto opcional de cada imagen: abajo a la izquierda, con un degradé oscuro suave
+          // para que se lea sobre fotos claras. Sin texto, la imagen queda limpia.
+          const text = hasText && (
+            <>
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/60 via-black/25 to-transparent" />
+              <span className="absolute inset-x-0 bottom-0 flex flex-col items-start p-5 pb-9 text-white sm:p-7 sm:pb-10 lg:p-9 lg:pb-12">
+                {slide.eyebrow?.trim() && (
+                  <span className="font-script text-xl leading-tight sm:text-2xl lg:text-3xl">{slide.eyebrow}</span>
+                )}
+                {slide.title?.trim() && (
+                  <span className="mt-1 font-display text-3xl leading-[1.05] sm:text-4xl lg:text-5xl">{slide.title}</span>
+                )}
+                {slide.href && slide.cta?.trim() && (
+                  <span className="mt-4 inline-block border border-white/85 px-5 py-2 text-xs font-medium transition group-hover:bg-white group-hover:text-ink sm:text-sm">
+                    {slide.cta}
+                  </span>
+                )}
+              </span>
+            </>
+          );
           return (
             <SwiperSlide key={slide.id ?? i}>
               <div className="relative w-full" style={{ aspectRatio: ratio }}>
                 {slide.href ? (
-                  <Link href={slide.href} prefetch={false} aria-label={slide.title || "Ver más"} className="block h-full w-full">
+                  <Link href={slide.href} prefetch={false} aria-label={slide.title || slide.cta || "Ver más"} className="group block h-full w-full">
                     {img}
+                    {text}
                   </Link>
                 ) : (
-                  img
+                  <>
+                    {img}
+                    {text}
+                  </>
                 )}
               </div>
             </SwiperSlide>

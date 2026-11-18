@@ -103,15 +103,26 @@ function SlideRow({
         {href && !isPreset && (
           <input value={href} onChange={(e) => onUpdate({ href: e.target.value })} placeholder="/tienda?q=casio o https://…" className={inp} />
         )}
-        <label className="flex flex-col gap-1">
-          <FieldLabel label="Descripción de la imagen" optional />
-          <input
-            value={slide.title ?? ""}
-            onChange={(e) => onUpdate({ title: e.target.value })}
-            placeholder="Ej: Anillos de oro 18k (ayuda a Google y a lectores de pantalla)"
-            className={inp}
-          />
-        </label>
+        {/* Texto sobre la imagen (abajo a la izquierda). Todo opcional: vacío = imagen limpia. */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label className="flex flex-col gap-1">
+            <FieldLabel label="Bajada (cursiva)" optional />
+            <input value={slide.eyebrow ?? ""} maxLength={80} onChange={(e) => onUpdate({ eyebrow: e.target.value })}
+              placeholder="Ej: Nueva colección" className={inp} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <FieldLabel label="Título" optional />
+            <input value={slide.title ?? ""} maxLength={120} onChange={(e) => onUpdate({ title: e.target.value })}
+              placeholder="Ej: Anillos de oro 18k" className={inp} />
+          </label>
+        </div>
+        {href && (
+          <label className="flex flex-col gap-1">
+            <FieldLabel label="Texto del botón" optional />
+            <input value={slide.cta ?? ""} maxLength={30} onChange={(e) => onUpdate({ cta: e.target.value })}
+              placeholder="Ej: Ver colección (vacío = sin botón; tocar la imagen igual lleva)" className={inp} />
+          </label>
+        )}
 
         <div className="mt-auto flex items-center justify-between">
           <span className="flex items-center gap-2 text-xs text-body">
@@ -254,7 +265,7 @@ export function AppearanceHero() {
       }
     >
       <p className="mb-3 text-xs text-muted">
-        Imágenes completas, sin texto encima (si querés texto, ponelo en la imagen). En PC se ven{" "}
+        Imágenes completas, cada una con su texto opcional encima (bajada, título y botón). En PC se ven{" "}
         <strong className="text-ink">2 lado a lado</strong> y en el celular <strong className="text-ink">1 por vez</strong>.
         Al subir una imagen se guarda sola; el orden, los links y el formato se guardan con <strong className="text-ink">Guardar</strong>.
       </p>

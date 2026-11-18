@@ -39,10 +39,11 @@ class SettingController extends Controller
             'hero.aspect'           => ['nullable', 'string', 'in:16/9,4/3,1/1'],
             'hero.slides.*.id'      => ['nullable', 'string', 'max:40'],
             'hero.slides.*.eyebrow' => ['nullable', 'string', 'max:80'],
-            // Texto alternativo de la imagen (ya no se muestra encima): opcional.
+            // Textos opcionales sobre cada imagen (el título también es el texto alternativo).
             'hero.slides.*.title'   => ['nullable', 'string', 'max:120'],
             'hero.slides.*.image'   => ['required', 'string', 'max:500'],
             'hero.slides.*.href'    => ['nullable', 'string', 'max:200'],
+            'hero.slides.*.cta'     => ['nullable', 'string', 'max:30'],
             'hero.slides.*.enabled' => ['nullable', 'boolean'],
 
             'payment'                             => ['sometimes', 'array'],

@@ -11,11 +11,14 @@ export type AnnouncementItem = { icon?: string; text: string };
 export type FeatureItem = { icon?: string; title: string; text?: string };
 export type HeroSlide = {
   id?: string;
+  /** Texto chico (cursiva) arriba del título. Opcional. */
   eyebrow?: string;
-  /** Descripción de la imagen (texto alternativo); ya no se muestra encima. */
+  /** Título que se muestra sobre la imagen (y su texto alternativo). Opcional. */
   title: string;
   image: string;
   href?: string;
+  /** Texto del botón; solo se muestra si la imagen tiene a dónde llevar. */
+  cta?: string;
   enabled?: boolean;
 };
 
