@@ -501,7 +501,18 @@ export function useAdminNotifications() {
 }
 
 // ─────────── Búsqueda global del panel ───────────
-export type SearchResultItem = { id: number; label: string; sub: string; href: string };
+export type SearchResultItem = {
+  id: number;
+  label: string;
+  sub: string;
+  href: string;
+  image?: string | null;
+  category?: string | null;
+  stock?: number;
+  variantsCount?: number;
+  hidden?: boolean;
+  meta?: string | null;
+};
 export type AdminSearchResults = {
   products: SearchResultItem[];
   orders: SearchResultItem[];

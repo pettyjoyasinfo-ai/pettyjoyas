@@ -18,7 +18,8 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $orders = $this->buildQuery($request)->paginate(20);
+        $perPage = min(100, max(1, (int) $request->query('per_page', 20)));
+        $orders = $this->buildQuery($request)->paginate($perPage);
         return OrderResource::collection($orders);
     }
 
@@ -48,7 +49,10 @@ class OrderController extends Controller
                     $sub->where('number', 'like', "%{$search}%")
                         ->orWhereHas('customer', fn ($c) => $c
                             ->where('name', 'like', "%{$search}%")
-                            ->orWhere('email', 'like', "%{$search}%"));
+                            ->orWhere('email', 'like', "%{$search}%"))
+                        ->orWhereHas('items', fn ($i) => $i
+                            ->where('name', 'like', "%{$search}%")
+                            ->orWhere('variant_label', 'like', "%{$search}%"));
                 });
             })
             ->latest();

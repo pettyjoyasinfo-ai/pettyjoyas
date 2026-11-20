@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ArrowLeft, Banknote, Eye, TrendingUp, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Banknote, Eye, Search, TrendingUp, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, PageHeader } from "@/components/admin/ui";
 import { adminApiFetch } from "@/lib/api/client";
@@ -42,19 +42,47 @@ type SaleDetail = {
   createdAt: string;
 };
 
+const AR_TZ = "America/Argentina/Buenos_Aires";
+
 function fmt(iso: string) {
   return new Date(iso).toLocaleString("es-AR", {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
+    timeZone: AR_TZ,
   });
 }
 
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("es-AR", {
+    hour: "2-digit", minute: "2-digit",
+    timeZone: AR_TZ,
+  });
 }
 
 export default function PosHistorialPage() {
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const trimmedQ = debouncedQ.trim();
+  const isSearching = trimmedQ.length >= 2;
+
+  const { data: matchingSales = [], isLoading: searchLoading } = useQuery<SaleDetail[]>({
+    queryKey: ["pos", "cash-register", "search-sales", trimmedQ],
+    queryFn: async () => {
+      const res = await adminApiFetch<SaleDetail[] | { data?: SaleDetail[] }>(
+        `/orders?canal=local&q=${encodeURIComponent(trimmedQ)}&per_page=50`,
+      );
+      return Array.isArray(res) ? res : (res?.data ?? []);
+    },
+    enabled: isSearching,
+    staleTime: 20_000,
+  });
 
   const { data: registers = [], isLoading } = useQuery<RegisterSummary[]>({
     queryKey: ["pos", "cash-register", "history"],
@@ -76,6 +104,54 @@ export default function PosHistorialPage() {
           </Link>
         }
       />
+
+      {/* Buscador global de productos vendidos en cajas */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-2.5 focus-within:border-brand">
+          <Search className="h-4 w-4 shrink-0 text-muted" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar producto vendido en cajas (nombre, variante o N° de venta)…"
+            className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-muted"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Limpiar búsqueda"
+              className="text-muted hover:text-ink"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {isSearching && (
+          <div className="mt-3">
+            {searchLoading ? (
+              <div className="rounded-2xl border border-line bg-white py-8 text-center text-sm text-muted">
+                Buscando ventas…
+              </div>
+            ) : matchingSales.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-line bg-white py-8 text-center text-sm text-muted">
+                No se encontraron ventas en cajas para &ldquo;{trimmedQ}&rdquo;.
+              </div>
+            ) : (
+              <Card
+                title={`${matchingSales.length} ${matchingSales.length === 1 ? "venta encontrada" : "ventas encontradas"} para “${trimmedQ}”`}
+                padded={false}
+              >
+                <div className="max-h-96 divide-y divide-line overflow-y-auto">
+                  {matchingSales.map((s) => (
+                    <SaleDetailRow key={s.id} sale={s} highlight={trimmedQ} showDate />
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
 
       <DaySummary />
 
@@ -191,12 +267,83 @@ export default function PosHistorialPage() {
   );
 }
 
+/** Fila compartida entre el buscador global y el modal de detalle de caja/día. */
+function SaleDetailRow({
+  sale: s,
+  highlight = "",
+  showDate = false,
+}: {
+  sale: SaleDetail;
+  highlight?: string;
+  showDate?: boolean;
+}) {
+  const needle = highlight.trim().toLowerCase();
+
+  return (
+    <div className="px-5 py-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <Link href={`/admin/pedidos/${s.id}`} className="hover:text-brand hover:underline">
+              {s.number}
+            </Link>
+            {s.kind && s.kind !== "venta" && (
+              <Badge className="bg-blue-50 text-blue-700">{s.kind === "cambio" ? "Cambio" : "Devolución"}</Badge>
+            )}
+          </p>
+          <p className="text-xs text-muted">
+            {showDate ? fmt(s.createdAt) : fmtTime(s.createdAt)} · {s.customer?.name ?? "Sin cliente"} ·{" "}
+            {PAYMENT_METHOD_LABEL[s.paymentMethod] ?? s.paymentMethod}
+          </p>
+        </div>
+        <span className="shrink-0 text-sm font-semibold text-ink">{formatPrice(s.total)}</span>
+      </div>
+      <ul className="mt-2 space-y-1">
+        {s.items.map((it, idx) => {
+          const matches =
+            needle.length > 0 &&
+            (it.name.toLowerCase().includes(needle) ||
+              (it.variantLabel?.toLowerCase().includes(needle) ?? false));
+          return (
+            <li
+              key={idx}
+              className={`flex items-center justify-between gap-3 text-xs ${
+                matches ? "font-medium text-brand" : "text-body"
+              }`}
+            >
+              <span className="truncate">
+                {it.name}{it.variantLabel ? ` · ${it.variantLabel}` : ""} x{it.quantity}
+              </span>
+              <span className="shrink-0">{formatPrice(it.unitPrice * it.quantity)}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 /** Detalle de ventas (de una caja o de un día): lo que se vendió, a qué hora y con qué medio. */
 function SalesDetailModal({ title, url, onClose }: { title: string; url: string; onClose: () => void }) {
+  const [filter, setFilter] = useState("");
   const { data: sales = [], isLoading } = useQuery<SaleDetail[]>({
     queryKey: ["pos", "sales-detail", url],
     queryFn: () => adminApiFetch(url),
   });
+
+  const needle = filter.trim().toLowerCase();
+  const filteredSales = needle
+    ? sales.filter(
+        (s) =>
+          s.number.toLowerCase().includes(needle) ||
+          (s.customer?.name?.toLowerCase().includes(needle) ?? false) ||
+          s.items.some(
+            (it) =>
+              it.name.toLowerCase().includes(needle) ||
+              (it.variantLabel?.toLowerCase().includes(needle) ?? false),
+          ),
+      )
+    : sales;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 px-4 backdrop-blur-sm">
@@ -208,40 +355,43 @@ function SalesDetailModal({ title, url, onClose }: { title: string; url: string;
           </button>
         </div>
 
+        {!isLoading && sales.length > 0 && (
+          <div className="border-b border-line px-5 py-2.5">
+            <div className="flex items-center gap-2 rounded-xl border border-line bg-stone-bg/60 px-3 py-1.5 focus-within:border-brand focus-within:bg-white">
+              <Search className="h-3.5 w-3.5 shrink-0 text-muted" />
+              <input
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filtrar por producto, cliente o N°…"
+                className="w-full bg-transparent text-xs text-ink outline-none placeholder:text-muted"
+              />
+              {filter && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("")}
+                  aria-label="Limpiar filtro"
+                  className="text-muted hover:text-ink"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="overflow-y-auto">
           {isLoading ? (
             <div className="py-16 text-center text-sm text-muted">Cargando ventas…</div>
           ) : sales.length === 0 ? (
             <div className="py-16 text-center text-sm text-muted">No hubo ventas.</div>
+          ) : filteredSales.length === 0 ? (
+            <div className="py-16 text-center text-sm text-muted">
+              No hay ventas que coincidan con &ldquo;{filter.trim()}&rdquo;.
+            </div>
           ) : (
             <div className="divide-y divide-line">
-              {sales.map(s => (
-                <div key={s.id} className="px-5 py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="flex items-center gap-2 text-sm font-semibold text-ink">
-                        {s.number}
-                        {s.kind && s.kind !== "venta" && (
-                          <Badge className="bg-blue-50 text-blue-700">{s.kind === "cambio" ? "Cambio" : "Devolución"}</Badge>
-                        )}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {fmtTime(s.createdAt)} · {s.customer?.name ?? "Sin cliente"} · {PAYMENT_METHOD_LABEL[s.paymentMethod] ?? s.paymentMethod}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm font-semibold text-ink">{formatPrice(s.total)}</span>
-                  </div>
-                  <ul className="mt-2 space-y-1">
-                    {s.items.map((it, idx) => (
-                      <li key={idx} className="flex items-center justify-between gap-3 text-xs text-body">
-                        <span className="truncate">
-                          {it.name}{it.variantLabel ? ` · ${it.variantLabel}` : ""} x{it.quantity}
-                        </span>
-                        <span className="shrink-0">{formatPrice(it.unitPrice * it.quantity)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              {filteredSales.map((s) => (
+                <SaleDetailRow key={s.id} sale={s} highlight={filter} />
               ))}
             </div>
           )}

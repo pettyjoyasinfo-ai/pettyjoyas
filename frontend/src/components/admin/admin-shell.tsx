@@ -18,6 +18,7 @@ import {
   useAdminNotifications,
   useAdminSearch,
   type AdminNotifItem,
+  type SearchResultItem,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 
@@ -178,13 +179,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </Link>
 
           {/* Buscador */}
-          <div ref={searchRef} className="relative hidden max-w-md flex-1 sm:block">
+          <div ref={searchRef} className="relative hidden max-w-lg flex-1 sm:block">
             <div className="flex items-center gap-2.5 rounded-full bg-stone-bg px-4 py-2">
               <Search className="h-4 w-4 shrink-0 text-muted" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar producto, pedido o cliente…"
+                placeholder="Buscar producto, venta o cliente…"
                 className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-muted"
               />
               {searchQuery && (
@@ -196,15 +197,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
             {/* Resultados */}
             {hasResults && (
-              <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-2xl border border-line bg-white shadow-lg">
+              <div className="absolute left-0 top-full z-50 mt-2 max-h-[75vh] w-full overflow-y-auto rounded-2xl border border-line bg-white shadow-lg">
                 {searchData!.products.length > 0 && (
-                  <SearchGroup title="Productos"  items={searchData!.products}  onClose={() => setSearchQuery("")} />
+                  <SearchGroup title="Productos" kind="products" items={searchData!.products} onClose={() => setSearchQuery("")} />
                 )}
                 {searchData!.orders.length > 0 && (
-                  <SearchGroup title="Pedidos"    items={searchData!.orders}    onClose={() => setSearchQuery("")} />
+                  <SearchGroup title="Ventas / Pedidos" kind="orders" items={searchData!.orders} onClose={() => setSearchQuery("")} />
                 )}
                 {searchData!.customers.length > 0 && (
-                  <SearchGroup title="Clientes"   items={searchData!.customers} onClose={() => setSearchQuery("")} />
+                  <SearchGroup title="Clientes" kind="customers" items={searchData!.customers} onClose={() => setSearchQuery("")} />
                 )}
               </div>
             )}
@@ -323,27 +324,101 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
 function SearchGroup({
   title,
+  kind,
   items,
   onClose,
 }: {
   title: string;
-  items: { id: number; label: string; sub: string; href: string }[];
+  kind?: "products" | "orders" | "customers";
+  items: SearchResultItem[];
   onClose: () => void;
 }) {
   return (
     <div>
       <p className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted">{title}</p>
-      {items.map((item) => (
-        <Link
-          key={item.id}
-          href={item.href}
-          onClick={onClose}
-          className="flex items-center justify-between px-4 py-2 transition hover:bg-stone-bg"
-        >
-          <span className="truncate text-sm text-ink">{item.label}</span>
-          <span className="ml-3 shrink-0 text-xs text-muted">{item.sub}</span>
-        </Link>
-      ))}
+      {items.map((item) => {
+        if (kind === "products") {
+          const hasStock = typeof item.stock === "number";
+          const hasVariants = typeof item.variantsCount === "number" && item.variantsCount > 0;
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              onClick={onClose}
+              className="flex items-center gap-3 px-4 py-2 transition hover:bg-stone-bg"
+            >
+              {item.image ? (
+                <Image
+                  src={item.image}
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 shrink-0 rounded-lg bg-stone-bg object-cover"
+                />
+              ) : (
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-stone-bg text-muted">
+                  <Package className="h-4 w-4" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-sm font-medium text-ink">{item.label}</span>
+                  {item.hidden && (
+                    <span className="shrink-0 rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-muted">Oculto</span>
+                  )}
+                </div>
+                {(item.category || hasStock || hasVariants) && (
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[11px] text-muted">
+                    {item.category && <span className="truncate">{item.category}</span>}
+                    {hasStock && (
+                      <>
+                        {item.category && <span>·</span>}
+                        <span
+                          className={
+                            item.stock! <= 0
+                              ? "font-medium text-red-600"
+                              : item.stock === 1
+                                ? "font-medium text-amber-600"
+                                : ""
+                          }
+                        >
+                          {item.stock! <= 0 ? "Sin stock" : `${item.stock} u.`}
+                        </span>
+                      </>
+                    )}
+                    {hasVariants && (
+                      <>
+                        {(item.category || hasStock) && <span>·</span>}
+                        <span>
+                          {item.variantsCount} {item.variantsCount === 1 ? "variante" : "variantes"}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <span className="ml-3 shrink-0 text-xs font-semibold text-ink">{item.sub}</span>
+            </Link>
+          );
+        }
+
+        return (
+          <Link
+            key={item.id}
+            href={item.href}
+            onClick={onClose}
+            className="flex items-center justify-between px-4 py-2 transition hover:bg-stone-bg"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-ink">{item.label}</p>
+              {item.meta && <p className="truncate text-[11px] text-muted">{item.meta}</p>}
+            </div>
+            <span className={cn("ml-3 shrink-0 text-xs", kind === "orders" ? "font-semibold text-ink" : "text-muted")}>
+              {item.sub}
+            </span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
